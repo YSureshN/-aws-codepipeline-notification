@@ -78,7 +78,7 @@ def handler(event, context):
             ]
         }
     # build MS Teams message
-    elif MESSENGER == 'msteams':
+    elif HOOK_URL == 'msteams':
         message_data = {
             'summary': 'summary',
             '@type': 'MessageCard',
@@ -99,8 +99,8 @@ def handler(event, context):
                 }
             ],
             'potentialAction': {
-                '@type': 'OpenUri', 'name': 'Open in AWS', 'targets': [
-                        { 'os': 'default', 'uri': pipeline_url }
+                '@type': 'OpenUrl', 'name': 'Open in AWS', 'targets': [
+                        { 'os': 'default', 'url': pipeline_url }
                     ]
             }
         }
