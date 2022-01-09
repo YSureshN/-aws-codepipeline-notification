@@ -1,0 +1,2505 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'This AWS CloudFormation Template is for Telematics Geofence API'
+Parameters:
+  ApplicationName:
+    Type: String
+    Default: "Telematics-Geofence-API"
+  EnvType:
+    Description: 'Environment: dev,qa,stg,prod'
+    Type: String
+    Default: qa
+    AllowedValues:
+    - dev
+    - qa
+    - stg
+    - prod
+    ConstraintDescription: must be either 'dev','qa','stg' or 'prod'
+  ReadCapacityUnits:
+    Description: Provisioned read throughput
+    Type: Number
+    Default: '1'
+    MinValue: '1'
+    MaxValue: '10'
+    ConstraintDescription: must be between 1 and 10
+  WriteCapacityUnits:
+    Description: Provisioned write throughput
+    Type: Number
+    Default: '1'
+    MinValue: '1'
+    MaxValue: '10'
+    ConstraintDescription: must be between 1 and 10
+
+Mappings:
+  dev:
+    Layer:
+      "VpcId": "vpc-1081ac74"
+      "SubnetId1": "subnet-dd038785"
+      "SubnetId2": "subnet-bc28a093"
+      "PubSubnetId1": "subnet-a04ee1f8"
+      "PubSubnetId2": "subnet-191faa33"
+      "RDSSecurityGroup": "sg-96aa31ee"
+      "DBSubnetGroupName": "dev.rds.subnetgrp"
+      "MSKSecurityGroups": "sg-9bad17e3"
+      "EKSClusterSecurityGroupIdsone": "sg-0254a72c37a13191f"
+      "EKSClusterSecurityGroupIdstwo": "sg-0553232152be703cf"
+      "EKSClusterSecurityGroupIdsthree": "sg-9bad17e3"
+      "NodeEc2SshKey": "devutil"
+      "NodeSecurityGroups": "sg-9bad17e3"
+      "GeofenceDispatcherSecurityGroup1": "sg-9bad17e3"
+      "CertArn": "arn:aws:acm:us-east-1:567234402044:certificate/5a14fe12-c8b1-4be3-b6fa-09b7da98c6fc"
+      "RetentionInDays": "7"
+      "ConnectionString": "Data Source=devotgdb00;user id=hercdb; password=@dminP@ss15;initial catalog=OTG3;Pooling=true;Min Pool Size=50; Max Pool Size=150;Application Name=OTGMobileAPI"
+      "telematicsConnectionString": "Data Source=devtelematicsdb.hercrentals.com;user id=hercdb;password=@dminP@ss15;initial catalog=Telematics;"
+      "ContrRecordName": "devotgmobileapi.hercrentals.com"
+      "JwtIssuer": "http://devotgmobileapi.hercrentals.com/"
+      "JwtAudience": "http://devotgmobileapi.hercrentals.com/"
+      "TaskCount": "1"
+      "redisConnectionString": "devotgcachedb.hercrentals.com:6379,abortConnect=false"
+      "PusherAppId": "728305"
+      "PusherAppKey": "8acd21bacea2038ca1f2"
+      "PusherAppSecret": "af6f153de9ddbe58bd4e"
+      "PusherCluster": "us2"
+      "ASPNETCOREENVIRONMENT": "Dev"
+      "PSTOffsetValue": "-480"    
+  qa:
+    Layer:
+      "VpcId": "vpc-9ad5dafe"
+      "SubnetId1": "subnet-dd038785"
+      "SubnetId2": "subnet-bc28a093"
+      "PubSubnetId1": "subnet-a6e062fe"
+      "PubSubnetId2": "subnet-2482390e"
+      "RDSSecurityGroup": "sg-96aa31ee"
+      "DBSubnetGroupName": "dev.rds.subnetgrp"
+      "MSKSecurityGroups": "sg-9bad17e3"
+      "EKSClusterSecurityGroupIdsone": "sg-0254a72c37a13191f"
+      "EKSClusterSecurityGroupIdstwo": "sg-0553232152be703cf"
+      "EKSClusterSecurityGroupIdsthree": "sg-9bad17e3"
+      "NodeEc2SshKey": "devutil"
+      "NodeSecurityGroups": "sg-9bad17e3"
+      "GeofenceDispatcherSecurityGroup1": "sg-9bad17e3"
+      "CertArn": "arn:aws:acm:us-east-1:567234402044:certificate/5a14fe12-c8b1-4be3-b6fa-09b7da98c6fc"
+      "RetentionInDays": "7"
+      "ConnectionString": "Data Source=qaotgdb00;user id=sa;password=Herc1234$;initial catalog=OTG;"
+      "telematicsConnectionString": "Data Source=qatelematicsdb.hercrentals.com;user id=hercdb;password=@dminP@ss15;initial catalog=Telematics;"
+      "ContrRecordName": "qaotgmobileapi.hercrentals.com"
+      "JwtIssuer": "http://qaotgmobileapi.hercrentals.com/"
+      "JwtAudience": "http://qaotgmobileapi.hercrentals.com/"
+      "TaskCount": "1"
+      "redisConnectionString": "qaotgcachedb.hercrentals.com:6379,abortConnect=false"
+      "PusherAppId": "811131"
+      "PusherAppKey": "73cc552b55036b700d7e"
+      "PusherAppSecret": "6d62a96afb85e6d67637"
+      "PusherCluster": "us2"
+      "ASPNETCOREENVIRONMENT": "QA"
+  stg:
+    Layer:
+      "VpcId": "vpc-a29785c6"
+      "SubnetId1": "subnet-fdf1bdc0"
+      "SubnetId2": "subnet-f54d3383"
+      "PubSubnetId1": "subnet-024f3174"
+      "PubSubnetId2": "subnet-85f0bcb8"
+      "RDSSecurityGroup": "sg-96aa31ee"
+      "DBSubnetGroupName": "dev.rds.subnetgrp"
+      "MSKSecurityGroups": "sg-9bad17e3"
+      "EKSClusterSecurityGroupIdsone": "sg-0254a72c37a13191f"
+      "EKSClusterSecurityGroupIdstwo": "sg-0553232152be703cf"
+      "EKSClusterSecurityGroupIdsthree": "sg-9bad17e3"
+      "NodeEc2SshKey": "devutil"
+      "NodeSecurityGroups": "sg-9bad17e3"
+      "GeofenceDispatcherSecurityGroup1": "sg-9bad17e3"
+      "CertArn": "arn:aws:acm:us-east-1:110972972731:certificate/a7d5744c-5854-4c05-983e-1913bdd6bc9f"
+      "RetentionInDays": "14"
+      "OTGConnectionString": "Data Source=stgtelematicsdb.hercrentals.com;user id=hercdb;password=@dminP@ss15;initial catalog=Telematics;"
+      "ContrRecordName": "stgtelematicsapi.hercrentals.com"
+      "TaskCount": "2"
+      "EmailHostName": "email-smtp.us-east-1.amazonaws.com"
+      "EmailPassword": "AvwX6f4srGE8+Hq70YBt6AuIkiXsBZwQ91+FIyDgwrYG"
+      "EmailPort": "587"
+      "EmailUserID": "AKIAJVHCN7OMIS4QH53A"
+      "SendEmail": "true"
+      "ProControlApplicationAccessID": "1"
+      "EnableAuthentication": "false"
+      "JwtIssuer": "SSOMaster"
+      "JwtAudience": "HercAudience"
+      "URLUPLOAD": "http://smsapi.wire2air.com/smsadmin/submitsm.aspx"
+      "URLReply": "https://stgtelematicsapi.hercrentals.com/api/AlertsRecipients/GetSMSDetails"
+      "URLAlertReply": "https://stgtelematicsapi.hercrentals.com/api/AlertsRecipients/GetSMSDetails"
+      "SessionConnectionString": "Data Source=stgtelematicsdb.hercrentals.com;user id=sa; password=Herc1234$ ; initial catalog = Session"
+      "ActiveDirectoryServerId": "2"
+      "TokenMinutes": "10"
+      "ZeroMinutes": "0"
+      "ExpireMinutes": "30"      
+      "AppSettingsDoShowGridLinesInGoogleMap": "false"
+      "AppSettingsOuterGridExtend": "0" 
+      "AppSettingsDoUpdateAllCentroidsToNearestContainingPoint": "false"
+      "AppSettingsDoMergeGridIfCentroidsAreCloseToEachOther": "true"
+      "AppSettingsCacheServices": "true"
+      "AppSettingsMergeWithin": "2.9"
+      "AppSettingsMinClusterSize": "2"
+      "AppSettingsMaxMarkersReturned": "500"
+      "AppSettingsAlwaysClusteringEnabledWhenZoomLevelLess": "2"
+      "AppSettingsZoomlevelClusterStop": "20"
+      "AppSettingsGridX": "6"
+      "AppSettingsGridY": "5"
+      "AppSettingsMarkerTypes": "1;2;3"
+      "AppSettingsMaxPointsInCache": "100000000"
+      "AppSettingsWindowsDomain": "HERC"
+      "AppSettingsDomain": "ad.hercrentals.com"
+      "TokensKey": "db3OIsj+BXE9NZDy0t8W3TcNekrF+2d/1sFnWG4HnV8TZY30iTOdtVWJG8abWvB1GlOgJuQZdcdhjkum/hccMw=="
+      "TokensIssuer": "ad.hercrentals.com"
+      "VERSION": "2.0"
+      "USERID": "HERC"
+      "PASSWORD": "herc"
+      "VASID": "3140"
+      "FROM": "27126"
+  prod:
+    Layer:
+      "VpcId": "vpc-e8ece28c"
+      "SubnetId1": "subnet-ca7e0bbc"
+      "SubnetId2": "subnet-939d27b9"
+      "PubSubnetId1": "subnet-cb7e0bbd"
+      "PubSubnetId2": "subnet-0ece4356"
+      "RDSSecurityGroup": "sg-96aa31ee"
+      "DBSubnetGroupName": "dev.rds.subnetgrp"
+      "MSKSecurityGroups": "sg-9bad17e3"
+      "EKSClusterSecurityGroupIdsone": "sg-0254a72c37a13191f"
+      "EKSClusterSecurityGroupIdstwo": "sg-0553232152be703cf"
+      "EKSClusterSecurityGroupIdsthree": "sg-9bad17e3"
+      "NodeEc2SshKey": "devutil"
+      "NodeSecurityGroups": "sg-9bad17e3"
+      "GeofenceDispatcherSecurityGroup1": "sg-9bad17e3"
+      "CertArn": "arn:aws:acm:us-east-1:110972972731:certificate/a7d5744c-5854-4c05-983e-1913bdd6bc9f"
+      "RetentionInDays": "30"
+      "TelematicsConnectionString": "Data Source=prdtelematicsdb.hercrentals.com;user id=hercdb;password=@dminP@ss15;initial catalog=Telematics;"
+      "ContrRecordName": "telematicsapi.hercrentals.com"
+      "TaskCount": "2"
+      "EmailHostName": "email-smtp.us-east-1.amazonaws.com"
+      "EmailPassword": "AvwX6f4srGE8+Hq70YBt6AuIkiXsBZwQ91+FIyDgwrYG"
+      "EmailPort": "587"
+      "EmailUserID": "AKIAJVHCN7OMIS4QH53A"
+      "SendEmail": "true"
+      "ProControlApplicationAccessID": "1"
+      "EnableAuthentication": "false"
+      "JwtIssuer": "SSOMaster"
+      "JwtAudience": "HercAudience"
+      "URLUPLOAD": "http://smsapi.wire2air.com/smsadmin/submitsm.aspx"
+      "URLReply": "https://telematicsapi.hercrentals.com/api/AlertsRecipients/GetSMSDetails"
+      "URLAlertReply": "https://telematicsapi.hercrentals.com/api/AlertsRecipients/GetSMSDetails"
+      "SessionConnectionString": "Data Source=prdtelematicsdb.hercrentals.com;user id=sa; password=Herc1234$ ; initial catalog = Session"
+      "ActiveDirectoryServerId": "2"
+      "TokenMinutes": "10"
+      "ZeroMinutes": "0"
+      "ExpireMinutes": "30"      
+      "AppSettingsDoShowGridLinesInGoogleMap": "false"
+      "AppSettingsOuterGridExtend": "0" 
+      "AppSettingsDoUpdateAllCentroidsToNearestContainingPoint": "false"
+      "AppSettingsDoMergeGridIfCentroidsAreCloseToEachOther": "true"
+      "AppSettingsCacheServices": "true"
+      "AppSettingsMergeWithin": "2.9"
+      "AppSettingsMinClusterSize": "2"
+      "AppSettingsMaxMarkersReturned": "500"
+      "AppSettingsAlwaysClusteringEnabledWhenZoomLevelLess": "2"
+      "AppSettingsZoomlevelClusterStop": "20"
+      "AppSettingsGridX": "6"
+      "AppSettingsGridY": "5"
+      "AppSettingsMarkerTypes": "1;2;3"
+      "AppSettingsMaxPointsInCache": "100000000"
+      "AppSettingsWindowsDomain": "HERC"
+      "AppSettingsDomain": "ad.hercrentals.com"
+      "TokensKey": "db3OIsj+BXE9NZDy0t8W3TcNekrF+2d/1sFnWG4HnV8TZY30iTOdtVWJG8abWvB1GlOgJuQZdcdhjkum/hccMw=="
+      "TokensIssuer": "ad.hercrentals.com"
+      "VERSION": "2.0"
+      "USERID": "HERC"
+      "PASSWORD": "herc"
+      "VASID": "3140"
+      "FROM": "27126"
+
+Conditions:
+  CreateProdResouces: !Or [!Equals [ !Ref EnvType, prod ], !Equals [ !Ref EnvType, stg ]]
+  CreateDevResouces: !Or [!Equals [ !Ref EnvType, dev ], !Equals [ !Ref EnvType, qa ]]
+
+Resources:
+  #-----------------------------------------------------------------------------
+  # IAM All Roles for telematics geofence Api
+  #-----------------------------------------------------------------------------
+  
+  # This Role for Appsync
+  AppsyncRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - appsync.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide access to appsync
+      Policies:
+        - PolicyName: EmbeddedInlinePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'cloudformation:*'
+                Resource: '*'
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+      RoleName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematics-geofence-Appsync
+  AppsyncInlinePolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:BatchGetItem'
+              - 'dynamodb:ConditionCheckItem'
+              - 'dynamodb:PutItem'
+              - 'dynamodb:DescribeContributorInsights'
+              - 'dynamodb:Scan'
+              - 'dynamodb:ListTagsOfResource'
+              - 'dynamodb:Query'
+              - 'dynamodb:DescribeStream'
+              - 'dynamodb:UpdateItem'
+              - 'dynamodb:DescribeTimeToLive'
+              - 'dynamodb:DescribeGlobalTableSettings'
+              - 'dynamodb:PartiQLSelect'
+              - 'dynamodb:DescribeTable'
+              - 'dynamodb:GetShardIterator'
+              - 'dynamodb:DescribeGlobalTable'
+              - 'dynamodb:GetItem'
+              - 'dynamodb:DescribeContinuousBackups'
+              - 'dynamodb:DescribeExport'
+              - 'dynamodb:DescribeKinesisStreamingDestination'
+              - 'dynamodb:DescribeBackup'
+              - 'dynamodb:GetRecords'
+              - 'dynamodb:DescribeTableReplicaAutoScaling'
+            Resource: '*'
+          
+          - Effect: Allow
+            Action:
+              - 'dynamodb:DescribeReservedCapacityOfferings'
+              - 'dynamodb:DescribeReservedCapacity'
+              - 'dynamodb:DescribeLimits'
+              - 'dynamodb:ListStreams'
+            Resource: '*'
+          
+      PolicyName: DynamoInvokeInlinePolicy
+      Roles: 
+        - !Ref AppsyncRole
+  
+  #-----------------------------------------------------------------------------
+  # This Role for EKS Cluster
+  #-----------------------------------------------------------------------------
+  
+  TelematicsgeofenceEKSclusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: 
+                - 'arn:aws:iam::567234402044:role/CodeBuild_S3'
+                - 'arn:aws:iam::567234402044:user/scase'
+              Service:
+                - eks.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide access to EKS-Cluster
+      Policies:
+        - PolicyName: EmbeddedInlinePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'cloudformation:*'
+                Resource: '*'
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+      RoleName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematicsgeofenceEKSclusterRole
+  
+  EKSclusterElevates3Policy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to EKS Cluster Role
+      ManagedPolicyName: TelematicsgeofenceEKSclusterElevates3
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:ListStorageLensConfigurations'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:ListAllMyBuckets'
+              - 's3:ListJobs'
+              - 's3:ListBucketVersions'
+              - 's3:ListBucket'
+              - 's3:ListMultipartUploadParts'
+            Resource: '*'
+          - Effect: Allow
+            Action: 's3:*'
+            Resource:
+              - 'arn:aws:s3:::dev.elevate.artifacts'
+              - 'arn:aws:s3:::dev.elevate.feapp'
+              - 'arn:aws:s3:::dev.elevate.artifacts/*'
+              - 'arn:aws:s3:::dev.elevate.feapp/*'
+              - 'arn:aws:s3:::dev.elevateteledata'
+              - 'arn:aws:s3:::dev.elevateteledata/*'
+              - 'arn:aws:s3:::dev.telematics.inartifacts'
+              - 'arn:aws:s3:::dev.telematics.outartifacts'
+              - 'arn:aws:s3:::dev.telematics.inartifacts/*'
+              - 'arn:aws:s3:::dev.telematics.outartifacts/*'
+      Roles: 
+        - !Ref TelematicsgeofenceEKSclusterRole
+
+  EKSclusterElevateDynamodbPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to EKScluster Role
+      ManagedPolicyName: dynamodbaccessforlambdaeks
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:List*'
+              - 'dynamodb:DescribeReservedCapacity*'
+              - 'dynamodb:DescribeLimits'
+              - 'dynamodb:DescribeTimeToLive'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'dynamodb:BatchGet*'
+              - 'dynamodb:DescribeStream'
+              - 'dynamodb:DescribeTable'
+              - 'dynamodb:Get*'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+              - 'dynamodb:BatchWrite*'
+              - 'dynamodb:CreateTable'
+              - 'dynamodb:Update*'
+              - 'dynamodb:PutItem'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+              - 'dax:*'
+              - 'application-autoscaling:DeleteScalingPolicy'
+              - 'application-autoscaling:DeregisterScalableTarget'
+              - 'application-autoscaling:DescribeScalableTargets'
+              - 'application-autoscaling:DescribeScalingActivities'
+              - 'application-autoscaling:DescribeScalingPolicies'
+              - 'application-autoscaling:PutScalingPolicy'
+              - 'application-autoscaling:RegisterScalableTarget'
+              - 'cloudwatch:DeleteAlarms'
+              - 'cloudwatch:DescribeAlarmHistory'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:DescribeAlarmsForMetric'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'cloudwatch:ListMetrics'
+              - 'cloudwatch:PutMetricAlarm'
+              - 'cloudwatch:GetMetricData'
+              - 'datapipeline:ActivatePipeline'
+              - 'datapipeline:CreatePipeline'
+              - 'datapipeline:DeletePipeline'
+              - 'datapipeline:DescribeObjects'
+              - 'datapipeline:DescribePipelines'
+              - 'datapipeline:GetPipelineDefinition'
+              - 'datapipeline:ListPipelines'
+              - 'datapipeline:PutPipelineDefinition'
+              - 'datapipeline:QueryObjects'
+              - 'ec2:DescribeVpcs'
+              - 'ec2:DescribeSubnets'
+              - 'ec2:DescribeSecurityGroups'
+              - 'iam:GetRole'
+              - 'iam:ListRoles'
+              - 'kms:DescribeKey'
+              - 'kms:ListAliases'
+              - 'sns:CreateTopic'
+              - 'sns:DeleteTopic'
+              - 'sns:ListSubscriptions'
+              - 'sns:ListSubscriptionsByTopic'
+              - 'sns:ListTopics'
+              - 'sns:Subscribe'
+              - 'sns:Unsubscribe'
+              - 'sns:SetTopicAttributes'
+              - 'lambda:CreateFunction'
+              - 'lambda:ListFunctions'
+              - 'lambda:ListEventSourceMappings'
+              - 'lambda:CreateEventSourceMapping'
+              - 'lambda:DeleteEventSourceMapping'
+              - 'lambda:GetFunctionConfiguration'
+              - 'lambda:DeleteFunction'
+              - 'resource-groups:ListGroups'
+              - 'resource-groups:ListGroupResources'
+              - 'resource-groups:GetGroup'
+              - 'resource-groups:GetGroupQuery'
+              - 'resource-groups:DeleteGroup'
+              - 'resource-groups:CreateGroup'
+              - 'tag:GetResources'
+              - 'kinesis:ListStreams'
+              - 'kinesis:DescribeStream'
+              - 'kinesis:DescribeStreamSummary'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'cloudwatch:GetInsightRuleReport'
+            Resource: 'arn:aws:cloudwatch:*:*:insight-rule/DynamoDBContributorInsights*'
+          - Effect: Allow
+            Action: 'iam:PassRole'
+            Resource: '*'
+            Condition:
+              StringLike:
+                iam:PassedToService:
+                  - 'application-autoscaling.amazonaws.com'
+                  - 'application-autoscaling.amazonaws.com.cn'
+                  - 'dax.amazonaws.com'
+          - Effect: Allow
+            Action: 'iam:CreateServiceLinkedRole'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - 'replication.dynamodb.amazonaws.com'
+                  - 'dax.amazonaws.com'
+                  - 'dynamodb.application-autoscaling.amazonaws.com'
+                  - 'contributorinsights.dynamodb.amazonaws.com'
+                  - 'kinesisreplication.dynamodb.amazonaws.com'
+      Roles: 
+        - !Ref TelematicsgeofenceEKSclusterRole
+  
+  EKSclusterSecretmanagerReadOnly:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to EKScluster Role
+      ManagedPolicyName: telematicsgeofenceDispatcherSecretmanagerReadOnly
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'secretsmanager:GetRandomPassword'
+              - 'secretsmanager:GetResourcePolicy'
+              - 'secretsmanager:UntagResource'
+              - 'secretsmanager:GetSecretValue'
+              - 'secretsmanager:DescribeSecret'
+              - 'secretsmanager:ListSecretVersionIds'
+              - 'secretsmanager:ListSecrets'
+              - 'secretsmanager:TagResource'
+            Resource: '*'
+      Roles: 
+        - !Ref TelematicsgeofenceEKSclusterRole
+  
+  EKSclustercrossaccountpinpoint:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: 'sts:AssumeRole'
+            Resource: 'arn:aws:iam::110972972731:role/Pinpoint-SES'
+      PolicyName: EKSclustercrossaccountpinpointpolicy
+      Roles: 
+        - !Ref TelematicsgeofenceEKSclusterRole
+  
+  EKSclusterEKSPolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'eks:ListClusters'
+              - 'eks:DescribeAddonVersions'
+              - 'eks:CreateCluster'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'eks:*'
+            Resource:
+              - 'arn:aws:eks:*:567234402044:addon/*/*/*'
+              - 'arn:aws:eks:*:567234402044:nodegroup/*/*/*'
+              - 'arn:aws:eks:*:567234402044:identityproviderconfig/*/*/*/*'
+              - 'arn:aws:eks:*:567234402044:fargateprofile/*/*/*'
+              - 'arn:aws:eks:*:567234402044:cluster/*'
+      PolicyName: EKSclusterEKSPolicy
+      Roles: 
+        - !Ref TelematicsgeofenceEKSclusterRole
+  
+  #-----------------------------------------------------------------------------
+  # This Role for EKS Node Group
+  #-----------------------------------------------------------------------------
+  
+  TelematicsgeofenceEKSNodeGroupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - eks.amazonaws.com
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide access to EKS-Node-Group
+      Policies:
+        - PolicyName: EmbeddedInlinePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'cloudformation:*'
+                Resource: '*'
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+      RoleName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - Telematics-geofence-EKS-NodeGroup-Role
+  EKSNodeGroupElevates3Policy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to EKS-NodeGroup Role
+      ManagedPolicyName: TelematicsgeofenceEKSNodeGroupElevates3
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:ListStorageLensConfigurations'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:ListAllMyBuckets'
+              - 's3:ListJobs'
+              - 's3:ListBucketVersions'
+              - 's3:ListBucket'
+              - 's3:ListMultipartUploadParts'
+            Resource: '*'
+          - Effect: Allow
+            Action: 's3:*'
+            Resource:
+              - 'arn:aws:s3:::dev.elevate.artifacts'
+              - 'arn:aws:s3:::dev.elevate.feapp'
+              - 'arn:aws:s3:::dev.elevate.artifacts/*'
+              - 'arn:aws:s3:::dev.elevate.feapp/*'
+              - 'arn:aws:s3:::dev.elevateteledata'
+              - 'arn:aws:s3:::dev.elevateteledata/*'
+              - 'arn:aws:s3:::dev.telematics.inartifacts'
+              - 'arn:aws:s3:::dev.telematics.outartifacts'
+              - 'arn:aws:s3:::dev.telematics.inartifacts/*'
+              - 'arn:aws:s3:::dev.telematics.outartifacts/*'
+      Roles: 
+        - !Ref TelematicsgeofenceEKSNodeGroupRole
+
+  EKSNodeGroupDynamoDBPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to EKS-NodeGroup Role
+      ManagedPolicyName: dynamodbaccessforeksnodegroup
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:List*'
+              - 'dynamodb:DescribeReservedCapacity*'
+              - 'dynamodb:DescribeLimits'
+              - 'dynamodb:DescribeTimeToLive'
+            Resource: '*'
+          
+          - Effect: Allow
+            Action:
+              - 'dynamodb:BatchGet*'
+              - 'dynamodb:DescribeStream'
+              - 'dynamodb:DescribeTable'
+              - 'dynamodb:Get*'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+              - 'dynamodb:BatchWrite*'
+              - 'dynamodb:CreateTable'
+              - 'dynamodb:Update*'
+              - 'dynamodb:PutItem'
+            Resource: '*'
+          
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+              - 'dax:*'
+              - 'application-autoscaling:DeleteScalingPolicy'
+              - 'application-autoscaling:DeregisterScalableTarget'
+              - 'application-autoscaling:DescribeScalableTargets'
+              - 'application-autoscaling:DescribeScalingActivities'
+              - 'application-autoscaling:DescribeScalingPolicies'
+              - 'application-autoscaling:PutScalingPolicy'
+              - 'application-autoscaling:RegisterScalableTarget'
+              - 'cloudwatch:DeleteAlarms'
+              - 'cloudwatch:DescribeAlarmHistory'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:DescribeAlarmsForMetric'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'cloudwatch:ListMetrics'
+              - 'cloudwatch:PutMetricAlarm'
+              - 'cloudwatch:GetMetricData'
+              - 'datapipeline:ActivatePipeline'
+              - 'datapipeline:CreatePipeline'
+              - 'datapipeline:DeletePipeline'
+              - 'datapipeline:DescribeObjects'
+              - 'datapipeline:DescribePipelines'
+              - 'datapipeline:GetPipelineDefinition'
+              - 'datapipeline:ListPipelines'
+              - 'datapipeline:PutPipelineDefinition'
+              - 'datapipeline:QueryObjects'
+              - 'ec2:DescribeVpcs'
+              - 'ec2:DescribeSubnets'
+              - 'ec2:DescribeSecurityGroups'
+              - 'iam:GetRole'
+              - 'iam:ListRoles'
+              - 'kms:DescribeKey'
+              - 'kms:ListAliases'
+              - 'sns:CreateTopic'
+              - 'sns:DeleteTopic'
+              - 'sns:ListSubscriptions'
+              - 'sns:ListSubscriptionsByTopic'
+              - 'sns:ListTopics'
+              - 'sns:Subscribe'
+              - 'sns:Unsubscribe'
+              - 'sns:SetTopicAttributes'
+              - 'lambda:CreateFunction'
+              - 'lambda:ListFunctions'
+              - 'lambda:ListEventSourceMappings'
+              - 'lambda:CreateEventSourceMapping'
+              - 'lambda:DeleteEventSourceMapping'
+              - 'lambda:GetFunctionConfiguration'
+              - 'lambda:DeleteFunction'
+              - 'resource-groups:ListGroups'
+              - 'resource-groups:ListGroupResources'
+              - 'resource-groups:GetGroup'
+              - 'resource-groups:GetGroupQuery'
+              - 'resource-groups:DeleteGroup'
+              - 'resource-groups:CreateGroup'
+              - 'tag:GetResources'
+              - 'kinesis:ListStreams'
+              - 'kinesis:DescribeStream'
+              - 'kinesis:DescribeStreamSummary'
+            Resource: '*'
+          
+          - Effect: Allow
+            Action: 'cloudwatch:GetInsightRuleReport'
+            Resource: 'arn:aws:cloudwatch:*:*:insight-rule/DynamoDBContributorInsights*'
+          
+          - Effect: Allow
+            Action: 'iam:PassRole'
+            Resource: '*'
+            Condition:
+              StringLike:
+                iam:PassedToService:
+                  - 'application-autoscaling.amazonaws.com'
+                  - 'application-autoscaling.amazonaws.com.cn'
+                  - 'dax.amazonaws.com'
+          
+          - Effect: Allow
+            Action: 'iam:CreateServiceLinkedRole'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - 'replication.dynamodb.amazonaws.com'
+                  - 'dax.amazonaws.com'
+                  - 'dynamodb.application-autoscaling.amazonaws.com'
+                  - 'contributorinsights.dynamodb.amazonaws.com'
+                  - 'kinesisreplication.dynamodb.amazonaws.com'
+      Roles: 
+        - !Ref TelematicsgeofenceEKSNodeGroupRole
+
+  EKSNodeGroupMSKInlinePolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'kafka-cluster:Connect'
+              - 'kafka-cluster:DescribeCluster'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'kafka-cluster:CreateTopic'
+              - 'kafka-cluster:WriteData'
+              - 'kafka-cluster:ReadData'
+              - 'kafka-cluster:DescribeTopic'
+            Resource: '*'
+      PolicyName: MSK-InlinePolicy
+      Roles: 
+        - !Ref TelematicsgeofenceEKSNodeGroupRole
+  
+  EKSNodeGrouppinpointSMSInlinePolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'mobiletargeting:GetUserEndpoints'
+              - 'mobiletargeting:PutEvents'
+              - 'mobiletargeting:SendMessages'
+              - 'mobiletargeting:UpdateEndpoint'
+            Resource: '*'
+      PolicyName: pinpointSMS-InlinePolicy
+      Roles: 
+        - !Ref TelematicsgeofenceEKSNodeGroupRole
+  
+  EKSNodeGrouppinpointSESInlinePolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ses:SendEmail'
+              - 'ses:SendRawEmail'
+            Resource: '*'
+      PolicyName: pinpointSES-InlinePolicy
+      Roles: 
+        - !Ref TelematicsgeofenceEKSNodeGroupRole
+  
+  #-----------------------------------------------------------------------------
+  # This IAM Role for Lambda GeofenceActivater with Kinesis
+  #-----------------------------------------------------------------------------
+  
+  GeofenceActivaterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide access to S3,CloudWatch,Kinesis,Dynamodb,VPC,LocationService,MSK
+      Policies:
+        - PolicyName: EmbeddedInlinePolicyToGeofenceActivater
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'cloudformation:*'
+                Resource: '*'
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
+        - arn:aws:iam::aws:policy/AWSLambdaInvocation-DynamoDB
+        # - arn:aws:iam::aws:policy/AWSLambdaVPCAccessExecutionRole
+        # - arn:aws:iam::aws:policy/AWSLambdaMSKExecutionRole
+      RoleName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematics-geofenceactivatortest-Lambda-API
+  
+  DynamoDBMangedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to MyTestRole Role
+      ManagedPolicyName: dynamodbaccessforlambda
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:List*'
+              - 'dynamodb:DescribeReservedCapacity*'
+              - 'dynamodb:DescribeLimits'
+              - 'dynamodb:DescribeTimeToGeofenceActivaterRoleLive'
+            Resource: '*'
+          
+          - Effect: Allow
+            Action:
+              - 'dynamodb:BatchGet*'
+              - 'dynamodb:DescribeStream'
+              - 'dynamodb:DescribeTable'
+              - 'dynamodb:Get*'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+              - 'dynamodb:BatchWrite*'
+              - 'dynamodb:CreateTable'
+              - 'dynamodb:Update*'
+              - 'dynamodb:PutItem'
+            Resource: '*'
+          
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+              - 'dax:*'
+              - 'application-autoscaling:DeleteScalingPolicy'
+              - 'application-autoscaling:DeregisterScalableTarget'
+              - 'application-autoscaling:DescribeScalableTargets'
+              - 'application-autoscaling:DescribeScalingActivities'
+              - 'application-autoscaling:DescribeScalingPolicies'
+              - 'application-autoscaling:PutScalingPolicy'
+              - 'application-autoscaling:RegisterScalableTarget'
+              - 'cloudwatch:DeleteAlarms'
+              - 'cloudwatch:DescribeAlarmHistory'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:DescribeAlarmsForMetric'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'cloudwatch:ListMetrics'
+              - 'cloudwatch:PutMetricAlarm'
+              - 'cloudwatch:GetMetricData'
+              - 'datapipeline:ActivatePipeline'
+              - 'datapipeline:CreatePipeline'
+              - 'datapipeline:DeletePipeline'
+              - 'datapipeline:DescribeObjects'
+              - 'datapipeline:DescribePipelines'
+              - 'datapipeline:GetPipelineDefinition'
+              - 'datapipeline:ListPipelines'
+              - 'datapipeline:PutPipelineDefinition'
+              - 'datapipeline:QueryObjects'
+              - 'ec2:DescribeVpcs'
+              - 'ec2:DescribeSubnets'
+              - 'ec2:DescribeSecurityGroups'
+              - 'iam:GetRole'
+              - 'iam:ListRoles'
+              - 'kms:DescribeKey'
+              - 'kms:ListAliases'
+              - 'sns:CreateTopic'
+              - 'sns:DeleteTopic'
+              - 'sns:ListSubscriptions'
+              - 'sns:ListSubscriptionsByTopic'
+              - 'sns:ListTopics'
+              - 'sns:Subscribe'
+              - 'sns:Unsubscribe'
+              - 'sns:SetTopicAttributes'
+              - 'lambda:CreateFunction'
+              - 'lambda:ListFunctions'
+              - 'lambda:ListEventSourceMappings'
+              - 'lambda:CreateEventSourceMapping'
+              - 'lambda:DeleteEventSourceMapping'
+              - 'lambda:GetFunctionConfiguration'
+              - 'lambda:DeleteFunction'
+              - 'resource-groups:ListGroups'
+              - 'resource-groups:ListGroupResources'
+              - 'resource-groups:GetGroup'
+              - 'resource-groups:GetGroupQuery'
+              - 'resource-groups:DeleteGroup'
+              - 'resource-groups:CreateGroup'
+              - 'tag:GetResources'
+              - 'kinesis:ListStreams'
+              - 'kinesis:DescribeStream'
+              - 'kinesis:DescribeStreamSummary'
+            Resource: '*'
+          
+          - Effect: Allow
+            Action: 'cloudwatch:GetInsightRuleReport'
+            Resource: 'arn:aws:cloudwatch:*:*:insight-rule/DynamoDBContributorInsights*'
+          
+          - Effect: Allow
+            Action: 'iam:PassRole'
+            Resource: '*'
+            Condition:
+              StringLike:
+                iam:PassedToService:
+                  - 'application-autoscaling.amazonaws.com'
+                  - 'application-autoscaling.amazonaws.com.cn'
+                  - 'dax.amazonaws.com'
+          
+          - Effect: Allow
+            Action: 'iam:CreateServiceLinkedRole'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - 'replication.dynamodb.amazonaws.com'
+                  - 'dax.amazonaws.com'
+                  - 'dynamodb.application-autoscaling.amazonaws.com'
+                  - 'contributorinsights.dynamodb.amazonaws.com'
+                  - 'kinesisreplication.dynamodb.amazonaws.com'
+      Roles: 
+        - !Ref GeofenceActivaterRole
+  
+  LocationServicesPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceActivaterRole Role
+      ManagedPolicyName: LocationServicesforlambda
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'geo:ListMaps'
+              - 'geo:ListTrackers'
+              - 'geo:ListRouteCalculators'
+              - 'geo:ListGeofenceCollections'
+              - 'geo:ListPlaceIndexes'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'geo:*'
+            Resource:
+              - 'arn:aws:geo:*:567234402044:map/*'
+              - 'arn:aws:geo:*:567234402044:place-index/*'
+              - 'arn:aws:geo:*:567234402044:geofence-collection/*'
+              - 'arn:aws:geo:*:567234402044:tracker/*'
+              - 'arn:aws:geo:*:567234402044:route-calculator/*'
+      Roles: 
+        - !Ref GeofenceActivaterRole
+  
+  #-----------------------------------------------------------------------------
+  # This Role for GeofenceDispatcher
+  #-----------------------------------------------------------------------------
+  
+  GeofenceDispatcherRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide access to GeofenceDispatcher
+      Policies:
+        - PolicyName: EmbeddedInlinePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'cloudformation:*'
+                Resource: '*'
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        #- arn:aws:iam::aws:policy/AWSLambdaVPCAccessExecutionRole
+      RoleName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematics-geofence-Dispatcher-Lambda_RDS_FullAccess
+  GeofenceDispatcherLocationServices:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceDispatcher Role
+      ManagedPolicyName: telematics-geofence-Dispatcher-LocationServices
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'geo:ListMaps'
+              - 'geo:ListTrackers'
+              - 'geo:ListRouteCalculators'
+              - 'geo:ListGeofenceCollections'
+              - 'geo:ListPlaceIndexes'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'geo:*'
+            Resource:
+              - 'arn:aws:geo:*:567234402044:map/*'
+              - 'arn:aws:geo:*:567234402044:place-index/*'
+              - 'arn:aws:geo:*:567234402044:geofence-collection/*'
+              - 'arn:aws:geo:*:567234402044:tracker/*'
+              - 'arn:aws:geo:*:567234402044:route-calculator/*'
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  GeofenceDispatcherSecretmanagerReadOnly:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceDispatcher Role
+      ManagedPolicyName: telematics-geofence-Dispatcher-SecretmanagerReadOnly
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'secretsmanager:GetRandomPassword'
+              - 'secretsmanager:GetResourcePolicy'
+              - 'secretsmanager:UntagResource'
+              - 'secretsmanager:GetSecretValue'
+              - 'secretsmanager:DescribeSecret'
+              - 'secretsmanager:ListSecretVersionIds'
+              - 'secretsmanager:ListSecrets'
+              - 'secretsmanager:TagResource'
+            Resource: '*'
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  GeofenceDispatcherdynamodbaccess:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:List*'
+              - 'dynamodb:DescribeReservedCapacity*'
+              - 'dynamodb:DescribeLimits'
+              - 'dynamodb:DescribeTimeToLive'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'dynamodb:BatchGet*'
+              - 'dynamodb:DescribeStream'
+              - 'dynamodb:DescribeTable'
+              - 'dynamodb:Get*'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+              - 'dynamodb:BatchWrite*'
+              - 'dynamodb:CreateTable'
+              - 'dynamodb:Update*'
+              - 'dynamodb:PutItem'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+              - 'dax:*'
+              - 'application-autoscaling:DeleteScalingPolicy'
+              - 'application-autoscaling:DeregisterScalableTarget'
+              - 'application-autoscaling:DescribeScalableTargets'
+              - 'application-autoscaling:DescribeScalingActivities'
+              - 'application-autoscaling:DescribeScalingPolicies'
+              - 'application-autoscaling:PutScalingPolicy'
+              - 'application-autoscaling:RegisterScalableTarget'
+              - 'cloudwatch:DeleteAlarms'
+              - 'cloudwatch:DescribeAlarmHistory'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:DescribeAlarmsForMetric'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'cloudwatch:ListMetrics'
+              - 'cloudwatch:PutMetricAlarm'
+              - 'cloudwatch:GetMetricData'
+              - 'datapipeline:ActivatePipeline'
+              - 'datapipeline:CreatePipeline'
+              - 'datapipeline:DeletePipeline'
+              - 'datapipeline:DescribeObjects'
+              - 'datapipeline:DescribePipelines'
+              - 'datapipeline:GetPipelineDefinition'
+              - 'datapipeline:ListPipelines'
+              - 'datapipeline:PutPipelineDefinition'
+              - 'datapipeline:QueryObjects'
+              - 'ec2:DescribeVpcs'
+              - 'ec2:DescribeSubnets'
+              - 'ec2:DescribeSecurityGroups'
+              - 'iam:GetRole'
+              - 'iam:ListRoles'
+              - 'kms:DescribeKey'
+              - 'kms:ListAliases'
+              - 'sns:CreateTopic'
+              - 'sns:DeleteTopic'
+              - 'sns:ListSubscriptions'
+              - 'sns:ListSubscriptionsByTopic'
+              - 'sns:ListTopics'
+              - 'sns:Subscribe'
+              - 'sns:Unsubscribe'
+              - 'sns:SetTopicAttributes'
+              - 'lambda:CreateFunction'
+              - 'lambda:ListFunctions'
+              - 'lambda:ListEventSourceMappings'
+              - 'lambda:CreateEventSourceMapping'
+              - 'lambda:DeleteEventSourceMapping'
+              - 'lambda:GetFunctionConfiguration'
+              - 'lambda:DeleteFunction'
+              - 'resource-groups:ListGroups'
+              - 'resource-groups:ListGroupResources'
+              - 'resource-groups:GetGroup'
+              - 'resource-groups:GetGroupQuery'
+              - 'resource-groups:DeleteGroup'
+              - 'resource-groups:CreateGroup'
+              - 'tag:GetResources'
+              - 'kinesis:ListStreams'
+              - 'kinesis:DescribeStream'
+              - 'kinesis:DescribeStreamSummary'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'cloudwatch:GetInsightRuleReport'
+            Resource: 'arn:aws:cloudwatch:*:*:insight-rule/DynamoDBContributorInsights*'
+          
+          - Effect: Allow
+            Action: 'iam:PassRole'
+            Resource: '*'
+            Condition:
+              StringLike:
+                iam:PassedToService:
+                  - 'application-autoscaling.amazonaws.com'
+                  - 'application-autoscaling.amazonaws.com.cn'
+                  - 'dax.amazonaws.com'
+          
+          - Effect: Allow
+            Action: 'iam:CreateServiceLinkedRole'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - 'replication.dynamodb.amazonaws.com'
+                  - 'dax.amazonaws.com'
+                  - 'dynamodb.application-autoscaling.amazonaws.com'
+                  - 'contributorinsights.dynamodb.amazonaws.com'
+                  - 'kinesisreplication.dynamodb.amazonaws.com'
+      PolicyName: telematics-geofence-Dispatcher-dynamodbaccess
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  GeofenceDispatcherlambdavpc:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:DescribeNetworkInterfaces'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:AssignPrivateIpAddresses'
+              - 'ec2:UnassignPrivateIpAddresses'
+            Resource: '*'
+      PolicyName: GeofenceDispatcherlambdavpc
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  GeofenceDispatchersqsaccess:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'sqs:*'
+            Resource: '*'
+      PolicyName: GeofenceDispatchersqsaccess
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  #-----------------------------------------------------------------------------
+  # This IAM Role for Geofence utility Lambda to s3 full access
+  #-----------------------------------------------------------------------------
+  
+  GeofenceUtilityRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide access to S3
+      Policies:
+        - PolicyName: EmbeddedInlinePolicyToS3FullAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'cloudformation:*'
+                Resource: '*'
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+      RoleName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematics-geofence-Utility-LambdaS3Access
+  
+  #-----------------------------------------------------------------------------
+  # All Services for telematics geofence Api
+  #-----------------------------------------------------------------------------
+  
+  #-----------------------------------------------------------------------------
+  # This is for AWS AppSync GraphQLApi
+  #-----------------------------------------------------------------------------
+  
+  GraphQLApi:
+    Type: "AWS::AppSync::GraphQLApi"
+    Properties:
+      Name: 
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - elevate.appsync.consolidated.api 
+      AuthenticationType: API_KEY
+      Tags:
+        - Key: Name
+          Value: !Join [".", [!Ref EnvType, !Ref ApplicationName, "GraphQLApi"]]
+        - Key: Project
+          Value: !Ref ApplicationName
+        - Key: Owner
+          Value: Sunil Gupta
+        - Key: Environment
+          Value: !Ref EnvType
+        - Key: Application
+          Value: !Ref ApplicationName 
+  
+  AppSyncApiKey:
+    Type: AWS::AppSync::ApiKey
+    Properties:
+      ApiId: !GetAtt [GraphQLApi, ApiId]
+      Description: "equipment details" 
+  
+  #-----------------------------------------------------------------------------
+  # This DataSource for CommerceDS
+  #-----------------------------------------------------------------------------
+  
+  DataSourceCommerceDS:
+    Type: "AWS::AppSync::DataSource"
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId 
+      Name: CommerceDS
+      Description: The is backend for EKS Micro Services
+      Type: HTTP
+      ServiceRoleArn: !GetAtt AppsyncRole.Arn
+      HttpConfig:
+        Endpoint: "https://integration2-hohc4oi-wyrjumsnqgadk.us-5.magentosite.cloud"
+  
+  #-----------------------------------------------------------------------------
+  # This DataSource for EqquipmentSummaryMockLambda
+  #-----------------------------------------------------------------------------
+  
+  DataSourceEqquipmentSummaryMockLambda:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: EqquipmentSummaryMockLambda
+      Description: The is backend for Lambda Services
+      Type: "AWS_LAMBDA"
+      ServiceRoleArn: !GetAtt AppsyncRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: "arn:aws:lambda:us-east-1:567234402044:function:getEquipmentSummaryMock"
+  
+  #-----------------------------------------------------------------------------
+  # This DataSource for EquipmentCustomNameCreateLambda
+  #-----------------------------------------------------------------------------
+  
+  DataSourceEquipmentCustomNameCreateLambda:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: EquipmentCustomNameCreateLambda 
+      Description: The is backend for Lambda Services
+      Type: "AWS_LAMBDA"
+      ServiceRoleArn: !GetAtt AppsyncRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: "arn:aws:lambda:us-east-1:567234402044:function:dev-telematics-custom-equipment-name"
+  
+  #-----------------------------------------------------------------------------
+  # This DataSource for EquipmentCustomNameUpdateLambda
+  #-----------------------------------------------------------------------------
+  
+  DataSourceEquipmentCustomNameUpdateLambda:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: EquipmentCustomNameUpdateLambda 
+      Description: The is backend for Lambda Services
+      Type: "AWS_LAMBDA"
+      ServiceRoleArn: !GetAtt AppsyncRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: "arn:aws:lambda:us-east-1:567234402044:function:dev-telematics-modify-customequipmentname"
+  
+  #-----------------------------------------------------------------------------
+  # This DataSource for EquipmentNameSaveLambda
+  #-----------------------------------------------------------------------------
+  
+  DataSourceEquipmentNameSaveLambda:
+    Type: AWS::AppSync::DataSource
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: EquipmentNameSaveLambda 
+      Description: The is backend for Lambda Services
+      Type: "AWS_LAMBDA"
+      ServiceRoleArn: !GetAtt AppsyncRole.Arn
+      LambdaConfig:
+        LambdaFunctionArn: "arn:aws:lambda:us-east-1:567234402044:function:dev-telematics-save-equipment-name"
+  
+  #-----------------------------------------------------------------------------
+  # This DataSource for EquipmentSummary
+  #-----------------------------------------------------------------------------
+  
+  DataSourceEquipmentSummary:
+    Type: "AWS::AppSync::DataSource"
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: EquipmentSummary
+      Description: The is backend for EKS Micro Services
+      Type: HTTP
+      ServiceRoleArn: !GetAtt AppsyncRole.Arn
+      HttpConfig:
+        Endpoint: "http://a48db066d08a644cfa4431aaa52f2d23-1536120932.us-east-1.elb.amazonaws.com"
+  
+  #-----------------------------------------------------------------------------
+  # This DataSource for EquipmentUtilizationTimeline
+  #-----------------------------------------------------------------------------
+  
+  DataSourceEquipmentUtilizationTimeline:
+    Type: "AWS::AppSync::DataSource"
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: EquipmentUtilizationTimeline
+      Description: The is backend for EKS Micro Services
+      Type: HTTP
+      ServiceRoleArn: !GetAtt AppsyncRole.Arn
+      HttpConfig:
+        Endpoint: "http://a48db066d08a644cfa4431aaa52f2d23-1536120932.us-east-1.elb.amazonaws.com"
+  
+  #-----------------------------------------------------------------------------
+  # This DataSource for GetEquipmentsInGeofence
+  #-----------------------------------------------------------------------------
+  
+  DataSourceGetEquipmentsInGeofence:
+    Type: "AWS::AppSync::DataSource"
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: GetEquipmentsInGeofence
+      Description: The is backend for EKS Micro Services
+      Type: HTTP
+      ServiceRoleArn: !GetAtt AppsyncRole.Arn
+      HttpConfig:
+        Endpoint: "http://acbcfe309ede5499982ecbcda5de6dfa-1518439829.us-east-1.elb.amazonaws.com"
+  
+  #-----------------------------------------------------------------------------
+  # This DataSource for GetGeofencesByAccountId
+  #-----------------------------------------------------------------------------
+  
+  DataSourceGetGeofencesByAccountId:
+    Type: "AWS::AppSync::DataSource"
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: GetGeofencesByAccountId
+      Description: The is backend for EKS Micro Services
+      Type: HTTP
+      ServiceRoleArn: !GetAtt AppsyncRole.Arn
+      HttpConfig:
+        Endpoint: "http://acbcfe309ede5499982ecbcda5de6dfa-1518439829.us-east-1.elb.amazonaws.com"
+  
+  #-----------------------------------------------------------------------------
+  # This DataSource for HercTelematicsOtgApi
+  #-----------------------------------------------------------------------------
+  
+  DataSourceHercTelematicsOtgApi:
+    Type: "AWS::AppSync::DataSource"
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: HercTelematicsOtgApi
+      Description: The is backend for EKS Micro Services
+      Type: HTTP
+      ServiceRoleArn: !GetAtt AppsyncRole.Arn
+      HttpConfig:
+        Endpoint: "http://a4a5dab90172f4e6e9699077d167db73-439848888.us-east-1.elb.amazonaws.com"
+  
+  Schema:
+    Type: "AWS::AppSync::GraphQLSchema"
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Definition: |-
+        type AlertResponse {
+          alerts: [Alerts]
+        }
+
+        type Alerts {
+          id: Int
+          customerNumber: String
+          timeStamp: String
+          equipmentIdentifier: String
+          alerType: String
+          alertMessage: String
+        }
+
+        enum AutoAddEquipOfType {
+          CATEGORY
+          EQUIPMENT_TYPE
+          CAT_CLASS
+        }
+
+        type Branch {
+          branchnumber: String
+          branchname: String
+          branchtype: String
+          address: String
+          addresslatitude: String
+          addresslongitude: String
+          city: String
+          state: String
+          country: String
+          zip: String
+          phone: String
+        }
+
+        type BulkGeofenceOutput {
+          geofenceId: [String]
+          errorMessage: String
+        }
+
+        type Contract {
+          contractNumber: String
+          poNumber: String
+          startDate: String
+          endDate: String
+          rentalBranchCode: String
+          rentalBranchDetails: RentalBranchDetails
+        }
+
+        type DeliveryImage {
+          imageUri: String
+          imageName: String
+          photoTakenAt: String
+          latLong: String
+        }
+
+        type DeviceInfo {
+          batteryLifeRemaining: Int
+          engineRPM: Float
+          fuelEconomyAverage: Float
+          hardBrakingCount: Int
+          hardAccelarationCount: Int
+          oilLevel: Int
+          oilPressure: Float
+          oilTemperature: Float
+          coolantLevel: Float
+          fuelRange: String
+          seatBeltLatched: Boolean
+          temperature: Float
+          tirePressure: Int
+          humidity: String
+          ambientAirTemperature: String
+        }
+
+        type DevicePeriodicMessage {
+          equipmentID: String
+          accountID: String
+          contractNumber: String
+          engineCoolantTemp: String
+          engineHours: Int
+          engineLoad: Float
+          fuelConsumption: Float
+          fuelLevel: Float
+          coolantLevel: Float
+          defLevel: Float
+          dayOfUnused: Int
+          gPSunit: Int
+          heading: String
+          oilLevel: Float
+          name: String
+          monthlymileage: Float
+          hardBrakingCount: Int
+          hardAccelarationCount: Int
+          ignition: String
+          lastTransmissionTime: String
+          longitude: Float
+          licensePlate: String
+          latitude: Float
+          healthStatus: String
+          lastKnownLocation: String
+          lastLocationDate: String
+          fuelpercentage: Float
+          lifetimeKMPerHour: Int
+          tirePressure: Int
+          engineIdleHours: Int
+          hardBraking: Boolean
+          hardaccelarations: Boolean
+          batteryPercentage: Float
+          temperature: Float
+          oilPressure: Float
+          oilTemperature: Float
+          batteryLifeRemaining: Int
+          idleTime: Int
+          lowBatteryCondition: Int
+          isVehicleinMotion: Boolean
+          onOff: String
+          fuelEconomyAverage: String
+          fuelRange: String
+          humidity: String
+          ambientAirTemperature: String
+          seatBeltLatched: Boolean
+          seatBeltUnlatched: Boolean
+          speed: Int
+          engineRPM: Float
+        }
+
+        type DiagnosticTroubleCode {
+          code: String
+          description: String
+          dateOfTrigger: String
+        }
+
+        type Driver {
+          driverId: String
+          firstName: String
+          lastName: String
+          phone: String
+          truckType: String
+          isHauler: Boolean
+        }
+
+        type DriverInfo {
+          driverId: String
+          firstName: String
+          lastName: String
+          phone: String
+          truckType: String
+          isHauler: Boolean
+        }
+
+        type EquipInfo {
+          equipmentID: String
+          accountID: String
+          contractNumber: String
+          pONumber: String
+          startDate: String
+          endDate: String
+          rentalBranchCode: String
+          registrationState: String
+          batteryVoltage: Float
+          branchCode: String
+          catClass: String
+          contractEndDate: String
+          equipmentName: String
+          customName: String
+          reportingStatus: String
+          description: String
+          fuelType: String
+          yearPurchase: Int
+          vIN: String
+          serial: String
+          registrationEndDate: String
+          modelofEquipment: String
+          makeofEquipment: String
+          modelYear: Int
+          jobsiteName: String
+          jobSiteID: Int
+        }
+
+        type EquipSummary {
+          ##equipmentID: Int
+          ############################errorMessage: String
+          equpmentDetails: EquipInfo
+          ##errorType: String
+          devicePeriodicMessage: DevicePeriodicMessage
+          alerts: String
+          equipmentID: String
+          excludeWeekend: Boolean
+          jobsite: JobSite
+          utilizationDetails: UtilizationDetails
+          contractInfo: Contract
+          equipmentMasterInfo: EquipmentCommerceData
+          ##alerts: [Alerts]
+          alertCount: Int
+          equipmentOperatorInfo: EquipmentOperatorInfo
+          equipmentImage: String
+          deliveryImages: [Image]
+        }
+
+        type EquipmentCommerceData {
+          catClass: String
+          equipmentCategory: [String]
+          equipmentType: String
+        }
+
+        type EquipmentCustomName {
+          customerNumber: String
+          contractNumber: String
+          icNumber: String
+          customEquipmentName: String
+          errorMessage: String
+          errorType: String
+        }
+
+        input EquipmentCustomNames {
+          customerNumber: String!
+          contractNumber: String
+          icNumber: String!
+          customEquipmentName: String!
+        }
+
+        type EquipmentDataInList {
+          equipmentIC: String
+          coordinates: [Float]
+          equipmentName: String
+          customEquipmentName: String
+          fuelLevelPercentage: Float
+          ignition: Boolean
+          alertCount: Int
+        }
+
+        type EquipmentDeliveryDetails {
+          branchCode: String
+          rentalAgreement: String
+          equipmentIC: String
+          catClass: String
+          equipmentName: String
+          equipmentCustomName: String
+          jobSiteNumber: String
+          status: String
+          pickupType: String
+          scheduledDateTime: String
+          deliveryDateTime: String
+          deliveryInstructions: String
+          pickupDetails: String
+          driverInfo: DriverInfo
+          equipmentInfo: EquipmentInfo
+          servingBranch: ServingBranch
+        }
+
+        type EquipmentDiagnosticsAndSafety {
+          alertCount: Int
+          deviceInfo: DeviceInfo
+          equipment: [EquipmentInfoDiagnosticsAndSafety]
+        }
+
+        type EquipmentInfo {
+          equipmentId: String
+          equipmentNumber: String
+          make: String
+          model: String
+          description: String
+          serialNumber: String
+          catClass: String
+          quantity: Int
+          condition: String
+          deliveryImages: [DeliveryImage]
+        }
+
+        type EquipmentInfoDiagnosticsAndSafety {
+          batteryVoltage: Float
+          engineCoolantTemp: String
+          engineLoad: Int
+          fuelConsumption: Int
+          fuelLevel: Int
+          defLevel: Int
+          oilLevel: Int
+          name: String
+          customName: String
+        }
+
+        type EquipmentName {
+          rentalManCategory: String
+          rentalManClass: String
+          commerceEquipmentName: String
+          description: String
+          division: String
+          errorMessage: String
+          errorType: String
+        }
+
+        input EquipmentNames {
+          rentalManCategory: String
+          rentalManClass: String
+          commerceEquipmentName: String
+          description: String
+          division: String
+        }
+
+        type EquipmentOperatorInfo {
+          equipmentID: String
+          contractNumber: String
+          operators: [Operator]
+          previousOperators: [Operator]
+        }
+
+        type EquipmentUtilizationTimeline {
+          reportDate: AWSDateTime
+          ignitionStatus: Int
+        }
+
+        type GeoFence {
+          accountId: String
+          active: Boolean
+          autoAddEquipOfType: String
+          autoAddEquipment: Boolean
+          geofenceId: String
+          name: String
+          notes: String
+          status: String
+          totalEntrances: Int
+          totalExits: Int
+          equipmentCount: String
+          alertCount: String
+          shape: ShapeSchema
+          equipment: [String]
+          autoAddEquipTypeValues: [String]
+        }
+
+        input GeoFenceInput {
+          accountId: String
+          active: Boolean
+          autoAddEquipOfType: AutoAddEquipOfType
+          autoAddEquipment: Boolean
+          name: String
+          notes: String
+          status: StatusType
+          totalEntrances: Int
+          totalExits: Int
+          shape: ShapeInput
+          autoAddEquipTypeValues: [String]
+          equipment: [String]
+        }
+
+        type Image {
+          imageName: String
+          imageUri: String
+          latLong: String
+          photoTakenAt: String
+        }
+
+        type JobSite {
+          id: String
+          jobNumber: String
+          jobName: String
+          jobAddr1: String
+          jobAddr2: String
+          jobCity: String
+          jobLoc: String
+          jobState: String
+          jobZip: String
+          jobPhone: String
+          contactName: String
+        }
+
+        type Mutation {
+          addBulkGeofence(accountId: String!, geofences: [GeoFenceInput]): BulkGeofenceOutput
+          saveCustomEquipmentName(equipmentCustomNameRequestList: [EquipmentCustomNames]): [EquipmentCustomName]
+          updateCustomEquipmentName(customerNumber: String!, icNumber: String!, customEquipmentName: String!): EquipmentCustomName
+          addGeofence(input: GeoFenceInput!): GeoFence
+          deleteGeofence(input: String!): String
+          updateGeofence(geofenceId: String!, equipment: [String]): UpdateStatus
+          addEquipmentToGeofence(geofenceId: String!, equipmentNumber: String!): String
+          saveEquipmentName(equipmentCustomNameRequestList: [EquipmentNames]): [EquipmentName]
+        }
+
+        type OTGEquipmentDetails {
+          equipmentId: String
+          equipmentNumber: String
+          catClass: String
+          quantity: String
+          condition: String
+          make: String
+          model: String
+          serialNumber: String
+          equipmentIC: String
+          equipmentName: String
+          equipmentCustomName: String
+          description: String
+          equipmentImage: String
+          deliveryImages: [Image]
+        }
+
+        type Operator {
+          name: String
+          date: String
+        }
+
+        type OtgDTO {
+          branchCode: String
+          contractNumber: String
+          equipmentInfo: OTGEquipmentDetails
+          status: String
+          pickupType: String
+          scheduledDateTime: String
+          deliveryDateTime: String
+          jobsite: JobSite
+          pickupDetails: PickupDetails
+          deliveryOrPickupNote: String
+          driverInfo: Driver
+          servingBranch: Branch
+        }
+
+        type PickupDetails {
+          pickupTicketNumber: String
+          releasedDate: String
+          releasedBy: String
+        }
+
+        type Query {
+          getEquipmentsInGeofence(id: String!): [EquipmentDataInList]
+          GetEquipmentUtilizationTimeline(
+            customerNumber: String!,
+            ic: String!,
+            divison: String!,
+            startDate: AWSDate!,
+            endDate: AWSDate!,
+            isWeekendExcluded: Boolean!
+          ): [EquipmentUtilizationTimeline]
+          getEquipmentStatusAndInfo(contractNumber: String!, equipmentIC: String!): EquipmentDeliveryDetails
+          getEquipmentDiagnosticsAndSafety(customerNumber: String!, ic: String!): EquipmentDiagnosticsAndSafety
+          getAlertsByAccountId(customerNumber: String!, ic: String!): AlertResponse
+          getGeofenceById(geofenceId: String!): GeoFence
+          getGeofenceByAccount(accountId: String!): [GeoFence]
+          getAllDeliveryPickups(accountId: String!, token: String!): [OtgDTO]
+          getDeliveryPickUpDetails(
+            contractNumber: String!,
+            equipmentIc: String!,
+            accountId: String!,
+            token: String!
+          ): OtgDTO
+          getRouteUpdates(contractNumber: String!, equipmentIc: String!, token: String!): RouteInfo
+          getEquipmentSummary(
+            equipmentId: String!,
+            contractId: String!,
+            accountId: String!,
+            token: String!
+          ): EquipSummary
+          getEquipmentUtilizationDetails(
+            customerNumber: String!,
+            ic: String!,
+            divison: String!,
+            startDate: AWSDate!,
+            endDate: AWSDate!,
+            isWeekendExcluded: Boolean!
+          ): UtilizationDetails
+          getDiagnosticTroubleCode(customerNumber: String, equipmentIc: String, division: String): [DiagnosticTroubleCode]
+        }
+
+        type RentalBranchDetails {
+          branchname: String
+          addressline1: String
+          city: String
+          state: String
+          zip: String
+          phone: String
+        }
+
+        type RouteCoordinates {
+          latitude: Float
+          longitude: Float
+        }
+
+        type RouteInfo {
+          contractNumber: String
+          driverId: String
+          equipmentIc: String
+          eta: String
+          routeUpdates: [RouteCoordinates]
+        }
+
+        type ServingBranch {
+          address: String
+          addressLatitude: String
+          addressLongitude: String
+          branchName: String
+          branchNumber: String
+          branchType: String
+          city: String
+          country: String
+          phone: String
+          state: String
+          zip: String
+        }
+
+        input ShapeInput {
+          shapeType: ShapeType
+          radius: Float
+          coordinate: [[[Float]]]
+        }
+
+        type ShapeSchema {
+          shapeType: ShapeType
+          radius: Float
+          coordinate: [[[Float]]]
+        }
+
+        enum ShapeType {
+          CIRCLE
+          POLYGON
+          RECTANGLE
+        }
+
+        enum StatusType {
+          REGISTERING
+          READY
+          ERROR
+        }
+
+        type UpdateStatus {
+          geofenceId: String
+          accountId: String
+          active: Boolean
+          autoAddEquipOfType: AutoAddEquipOfType
+          autoAddEquipment: Boolean
+          name: String
+          notes: String
+          status: StatusType
+          totalEntrances: Int
+          totalExits: Int
+          shape: ShapeSchema
+          autoAddEquipTypeValues: [String]
+          equipment: [String]
+        }
+
+        type UtilizationDetails {
+          lastStart: String
+          usageToday: Int
+          utilizationPercentage: Float
+          lastTransmissionDate: String
+          usageLast5Weekdays: Int
+          engineHours: Int
+          engineidleHours: Int
+          mileage: Int
+        }
+
+        schema {
+          query: Query
+          mutation: Mutation
+        }
+  
+  #-----------------------------------------------------------------------------
+  # This function for DynamoDB Creating with AutoScaling based on 70%
+  #-----------------------------------------------------------------------------
+  
+  Telematicsgeofence:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+          - AttributeName: geofenceId
+            AttributeType: S
+          - AttributeName: TimeStamp
+            AttributeType: S
+        
+      KeySchema:
+          - AttributeName: geofenceId
+            KeyType: HASH
+          - AttributeName: TimeStamp
+            KeyType: RANGE
+      
+      TableName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematics.geofence
+              
+      ProvisionedThroughput:
+        ReadCapacityUnits: !Ref 'ReadCapacityUnits'
+        WriteCapacityUnits: !Ref 'WriteCapacityUnits'
+      
+      Tags:
+        - Key: Name
+          Value: !Join [".", [!Ref EnvType, !Ref ApplicationName, "DynamoDB"]]
+        - Key: Project
+          Value: !Ref ApplicationName
+        - Key: Owner
+          Value: Sunil Gupta
+        - Key: Environment
+          Value: !Ref EnvType
+        - Key: Application
+          Value: !Ref ApplicationName
+
+  UserTableWriteCapacityScalableTarget: 
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    Properties: 
+      MaxCapacity: 10
+      MinCapacity: 1
+      ResourceId: !Join
+            - /
+            - - table
+              - !Ref Telematicsgeofence
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+      ScalableDimension: "dynamodb:table:WriteCapacityUnits"
+      ServiceNamespace: dynamodb
+    DependsOn: Telematicsgeofence
+  
+  UserTableWriteScalingPolicy: 
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    Properties: 
+      PolicyName: WriteAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: 
+        Ref: UserTableWriteCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration: 
+        TargetValue: 70
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+  
+  UserTableReadCapacityScalableTarget: 
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    Properties: 
+      MaxCapacity: 10
+      MinCapacity: 1
+      ResourceId: !Join
+        - /
+        - - table
+          - !Ref Telematicsgeofence
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+      ScalableDimension: "dynamodb:table:ReadCapacityUnits"
+      ServiceNamespace: dynamodb
+    DependsOn: Telematicsgeofence
+  
+  UserTableReadScalingPolicy: 
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    Properties: 
+      PolicyName: ReadAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: 
+        Ref: UserTableReadCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration: 
+        TargetValue: 70
+        PredefinedMetricSpecification: 
+          PredefinedMetricType: DynamoDBReadCapacityUtilization
+  
+  #-----------------------------------------------------------------------------
+  # This Function for RDS Ms Sql Database for EKS Micro Services
+  #-----------------------------------------------------------------------------
+  
+  # Rdsqatelematicsequipmentdata:
+  #   Type: AWS::RDS::DBInstance
+  #   Properties: 
+  #     AllocatedStorage: 4000
+  #     AllowMajorVersionUpgrade: True
+  #     AutoMinorVersionUpgrade: True
+  #     AvailabilityZone: "us-east-1a"
+  #     CopyTagsToSnapshot: True
+  #     DBInstanceClass: "db.m5.large"
+  #     DBInstanceIdentifier: "qa-telematics-geofence"
+  #     DBParameterGroupName: "default.sqlserver-se-14.0"
+  #     DBSubnetGroupName: !FindInMap [ !Ref "EnvType", Layer, DBSubnetGroupName ]
+  #     DeletionProtection: True
+  #     EnableIAMDatabaseAuthentication: False
+  #     Engine: "sqlserver-se"
+  #     EngineVersion: "14.00.3381.3.v1"
+  #     LicenseModel: "license-included"
+  #     MasterUsername: "sa"
+  #     MasterUserPassword: "testingrds"
+  #     MultiAZ: False
+  #     OptionGroupName: "sqlserver-se-14-00"
+  #     Port: 1433
+  #     PreferredBackupWindow: "05:30-06:00"
+  #     PreferredMaintenanceWindow: "sat:04:30-sat:05:00"
+  #     StorageEncrypted: False
+  #     StorageType: gp2
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Join [".", [!Ref EnvType, !Ref ApplicationName, "RDS-MS-Sql"]]
+  #       - Key: Project
+  #         Value: !Ref ApplicationName
+  #       - Key: Owner
+  #         Value: Sunil Gupta
+  #       - Key: Environment
+  #         Value: !Ref EnvType
+  #       - Key: Application
+  #         Value: !Ref ApplicationName
+  #     VPCSecurityGroups:
+  #       - !FindInMap [ !Ref "EnvType", Layer, RDSSecurityGroup ]
+  
+  #-----------------------------------------------------------------------------
+  # This Function for EKS Cluster creating
+  #-----------------------------------------------------------------------------
+  
+  EKSCluster:
+    Type: "AWS::EKS::Cluster"
+    Properties:
+      Name:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - elevatetelematics-ms1
+      ResourcesVpcConfig:
+        SecurityGroupIds: 
+          - !FindInMap [ !Ref "EnvType", Layer, EKSClusterSecurityGroupIdsone ]
+          - !FindInMap [ !Ref "EnvType", Layer, EKSClusterSecurityGroupIdstwo ]
+          - !FindInMap [ !Ref "EnvType", Layer, EKSClusterSecurityGroupIdsthree ]
+        SubnetIds: 
+          - !FindInMap [ !Ref "EnvType", Layer, SubnetId1 ]
+          - !FindInMap [ !Ref "EnvType", Layer, SubnetId2 ]
+        EndpointPublicAccess: false
+        EndpointPrivateAccess: true
+      RoleArn: !GetAtt TelematicsgeofenceEKSclusterRole.Arn
+      Version: "1.21"
+      Tags:
+        - Key: Name
+          Value: !Join [".", [!Ref EnvType, !Ref ApplicationName, "EKS-Cluster"]]
+        - Key: Project
+          Value: !Ref ApplicationName
+        - Key: Owner
+          Value: Sunil Gupta
+        - Key: Environment
+          Value: !Ref EnvType
+        - Key: Application
+          Value: !Ref ApplicationName
+  
+  #-----------------------------------------------------------------------------
+  # This function for EKS Node Group and Autoscaling Maping to above EKS Cluster
+  #-----------------------------------------------------------------------------
+  
+  EKSNodegroup:
+    Type: 'AWS::EKS::Nodegroup'
+    DependsOn: EKSCluster
+    Properties:
+      ClusterName: !Ref EKSCluster
+      NodegroupName: 
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - elevatetelematics-ms-nodegroup
+      NodeRole: !GetAtt TelematicsgeofenceEKSNodeGroupRole.Arn
+      DiskSize: 100
+      RemoteAccess:
+        Ec2SshKey: !FindInMap [ !Ref "EnvType", Layer, NodeEc2SshKey ]
+        SourceSecurityGroups:
+          - !FindInMap [ !Ref "EnvType", Layer, NodeSecurityGroups ]
+      ScalingConfig:
+        MinSize: 2
+        DesiredSize: 2
+        MaxSize: 2
+      Labels:
+        Key1: nodegroup-1
+      Subnets:
+        - !FindInMap [ !Ref "EnvType", Layer, SubnetId1 ]
+        - !FindInMap [ !Ref "EnvType", Layer, SubnetId2 ]
+  
+  #-----------------------------------------------------------------------------
+  # This function for MSK Cluster Creating and Connect to EKS Cluster
+  #-----------------------------------------------------------------------------
+  
+  # GeofenceMSKCluster:
+  #   Type: 'AWS::MSK::Cluster'
+  #   Properties:
+  #     BrokerNodeGroupInfo:
+  #       ClientSubnets: 
+  #         - !FindInMap [ !Ref "EnvType", Layer, SubnetId1 ]
+  #         - !FindInMap [ !Ref "EnvType", Layer, SubnetId2 ]
+  #       InstanceType: kafka.m5.large
+  #       SecurityGroups:
+  #         - !FindInMap [ !Ref "EnvType", Layer, MSKSecurityGroups ]
+  #       StorageInfo:
+  #         EBSStorageInfo:
+  #           VolumeSize: 300
+  #     ClusterName:
+  #       'Fn::Join':
+  #           - '-'
+  #           - - Ref: EnvType
+  #             - elevaterewrite-kakfa1
+  #     EncryptionInfo:
+  #       EncryptionInTransit:
+  #         ClientBroker: TLS
+  #         InCluster: true
+  #     EnhancedMonitoring: PER_TOPIC_PER_BROKER
+  #     KafkaVersion: 2.6.2
+  #     NumberOfBrokerNodes: 2
+  #     LoggingInfo:
+  #       BrokerLogs:
+  #         CloudWatchLogs:
+  #           Enabled: true
+  #           LogGroup: dev-Kakfa
+  #     Tags:
+  #       Environment: !Ref EnvType
+  #       ResourceType: MSK-Cluster
+  #       CostCenter: 9038
+  #       Application: Elevate-Telematics
+  #       ITOwner: Sunil Gupta
+  #       Name:
+  #         'Fn::Join':
+  #                 - '-'
+  #                 - - Ref: EnvType
+  #                   - MSK-telemetics1
+  
+  #-----------------------------------------------------------------------------
+  # This Function for Lambda Creating and connecting to MSK Cluster
+  #-----------------------------------------------------------------------------
+  
+  GeofenceActivater:
+    Type: AWS::Lambda::Function
+    #DependsOn: MSKMMCluster1
+    Properties:
+      FunctionName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematics-geofenceactivatortest
+      Code:
+        S3Bucket: "dev.elevateteledata"
+        S3Key: "lambda-geofence-activator-jar/telematics.geofenceActivator-9.0-SNAPSHOT.jar"
+      Handler: herc.telematics.geofence.activator.GeofenceActivator::handleRequest
+      MemorySize: 512
+      Timeout: "300"
+      Role: !GetAtt GeofenceActivaterRole.Arn
+      Runtime: java11
+      TracingConfig:
+        Mode: Active
+      Tags:
+        - Key: Name
+          Value: !Join [".", [!Ref EnvType, !Ref ApplicationName, "Lambda"]]
+        - Key: Project
+          Value: !Ref ApplicationName
+        - Key: Owner
+          Value: Sunil Gupta
+        - Key: Environment
+          Value: !Ref EnvType
+        - Key: Application
+          Value: !Ref ApplicationName
+  
+  #-----------------------------------------------------------------------------
+  # This Lambda Function for Geofence Utility Runtime is python3.9
+  #-----------------------------------------------------------------------------
+  
+  GeofenceUtility:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematics-circle-2-polygon
+      Code:
+        S3Bucket: "dev.telematics.outartifacts"
+        S3Key: "feature-dev/circle2poly-deployment.zip"
+      Handler: lambda_function.lambda_handler
+      MemorySize: 512
+      Timeout: "300"
+      Role: !GetAtt GeofenceUtilityRole.Arn
+      Runtime: python3.9
+      TracingConfig:
+        Mode: Active
+      Tags:
+        - Key: Name
+          Value: !Join [".", [!Ref EnvType, !Ref ApplicationName, "Lambda"]]
+        - Key: Project
+          Value: !Ref ApplicationName
+        - Key: Owner
+          Value: Sunil Gupta
+        - Key: Environment
+          Value: !Ref EnvType
+        - Key: Application
+          Value: !Ref ApplicationName
+  
+  #-----------------------------------------------------------------------------
+  # This Function for Integrating Lambda with MSK Cluster
+  #-----------------------------------------------------------------------------
+  
+  EventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: arn:aws:kafka:us-east-1:567234402044:cluster/qa-elevaterewrite-kakfa1/c2e62e0d-6b70-4865-bd1b-7ba27fa958e8-16
+      FunctionName: !Ref GeofenceActivater
+      StartingPosition : LATEST
+      Topics:
+        - dev.test
+  
+  #-----------------------------------------------------------------------------
+  # This lambda for EventBridge Rule Connectiong Purpose
+  #-----------------------------------------------------------------------------
+  
+  GeofenceDispatcher:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: this Lambda for GeofenceDispatcher
+      FunctionName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematics-geofence-dispatcher
+      Code:
+        S3Bucket: "dev.elevateteledata"
+        S3Key: "geofence-dispatcher-7334/telematics.geofenceDispatcher-1.0-SNAPSHOT.jar"
+      Handler: herc.telematics.geofence.dispatcher.GeofenceDispatcher::handleRequest
+      MemorySize: 512
+      Timeout: "300"
+      Role: !GetAtt GeofenceDispatcherRole.Arn
+      Runtime: java11
+      TracingConfig:
+        Mode: Active
+      Environment:
+        Variables: 
+          QUEUE_NAME : dev-telematics-internal-dispatcher-alert-message-queue
+      VpcConfig:
+        SecurityGroupIds:
+          - !FindInMap [ !Ref "EnvType", Layer, GeofenceDispatcherSecurityGroup1 ]
+        SubnetIds:
+          - !FindInMap [ !Ref "EnvType", Layer, SubnetId1 ]
+          - !FindInMap [ !Ref "EnvType", Layer, SubnetId2 ]
+      Tags:
+        - Key: Name
+          Value: !Join [".", [!Ref EnvType, !Ref ApplicationName, "Lambda"]]
+        - Key: Project
+          Value: !Ref ApplicationName
+        - Key: Owner
+          Value: Sunil Gupta
+        - Key: Environment
+          Value: !Ref EnvType
+        - Key: Application
+          Value: !Ref ApplicationName
+  
+  #-----------------------------------------------------------------------------
+  # This Function for Events Rule Creating
+  #-----------------------------------------------------------------------------
+  
+  EventBridgeRule:
+    Type: AWS::Events::Rule
+    DependsOn: GeofenceDispatcher
+    Properties:
+      Description: catch-all rule for event bus
+      Name:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematics-geofencealerts
+      EventPattern:
+        source:
+          - aws.geo
+        detail-type:
+          - Location Geofence Event
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt GeofenceDispatcher.Arn
+          Id: lambda-function
+  
+  #-----------------------------------------------------------------------------
+  # This Function for EventBridgeInvokeFunctionPermission integration
+  #-----------------------------------------------------------------------------
+  
+  EventBridgeInvokeFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "GeofenceDispatcher"
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventBridgeRule.Arn
+  
+  #-----------------------------------------------------------------------------
+  # This Function for creating SQS Ques
+  #-----------------------------------------------------------------------------
+  
+  AWSSQSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName:
+        'Fn::Join':
+              - '-'
+              - - Ref: EnvType
+                - telematics-internal-dispatcher-alert-message-queue
+      Tags:
+        - Key: Name
+          Value: !Join [".", [!Ref EnvType, !Ref ApplicationName, "SQS"]]
+        - Key: Project
+          Value: !Ref ApplicationName
+        - Key: Owner
+          Value: Sunil Gupta
+        - Key: Environment
+          Value: !Ref EnvType
+        - Key: Application
+          Value: !Ref ApplicationName
+  
+  #-----------------------------------------------------------------------------
+  # This Function for creating SQS Ques Policy
+  #-----------------------------------------------------------------------------
+  
+  mysqspolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Id: MyQueuePolicy
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Allow-User-SendMessage
+          Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::567234402044:root
+          Action:
+          - "SQS:*"
+          #Resource: "*"
+          Resource: !Ref AWSSQSQueue
+      Queues:
+      - !Ref AWSSQSQueue
+  
+  #-----------------------------------------------------------------------------
+  # This Function for creating SQS Ques
+  #-----------------------------------------------------------------------------
+  
+  AlertMessageQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName:
+        'Fn::Join':
+              - '-'
+              - - Ref: EnvType
+                - telematics-alertmessagequeue
+      Tags:
+        - Key: Name
+          Value: !Join [".", [!Ref EnvType, !Ref ApplicationName, "SQS"]]
+        - Key: Project
+          Value: !Ref ApplicationName
+        - Key: Owner
+          Value: Sunil Gupta
+        - Key: Environment
+          Value: !Ref EnvType
+        - Key: Application
+          Value: !Ref ApplicationName
+  
+  #-----------------------------------------------------------------------------
+  # This Function for creating SQS Ques Policy
+  #-----------------------------------------------------------------------------
+  
+  mysqspolicy1:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Id: MyQueuePolicy
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AlertMessageQueue
+          Effect: Allow
+          Principal:
+            AWS: arn:aws:iam::567234402044:root
+          Action:
+          - "SQS:*"
+          #Resource: "*"
+          Resource: !Ref AlertMessageQueue
+      Queues:
+      - !Ref AlertMessageQueue
+#-----------------------------------------------------------------------------
+# Outputs-----Outputs---Outputs---Outputs
+#-----------------------------------------------------------------------------
+Outputs:
+  GraphQLApiARN:
+    Description: The Api ARN of the GraphQL endpoint.
+    Value: !Ref GraphQLApi
+  GraphQLApiId:
+    Description: The Api ID of the GraphQL endpoint.
+    Value: !GetAtt GraphQLApi.ApiId
+  GraphQLApiEndpoint:
+    Description: The URL for the GraphQL endpoint.
+    Value: !GetAtt GraphQLApi.GraphQLUrl
