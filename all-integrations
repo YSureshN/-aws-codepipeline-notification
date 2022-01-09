@@ -15,3 +15,8 @@ https://www.devopsnipp.com/forum/devops-tools/how-to-integrate-your-pipeline-in-
 Aws Cloudformation for Lambda, Role, Lambda Permition for SNS
 https://rnanthan.medium.com/publishing-amazon-sns-message-to-microsoft-team-21fd0b48e60e
 -----------------------
+IAM role 
+AWS::IAM::Role
+Type: AWS::IAM::ManagedPolicy
+Type: AWS::IAM::Policy
+https://cloudkatha.com/how-to-create-iam-role-using-cloudformation/
