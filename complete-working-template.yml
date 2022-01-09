@@ -2276,7 +2276,7 @@ Resources:
   # This Lambda Function for Geofence Activater Log Grop
   #-----------------------------------------------------------------------------
   
-  LogsLogGroup:
+  GeofenceActivaterGroup:
     Type: AWS::Logs::LogGroup
     DependsOn: GeofenceActivater
     Properties:
@@ -2321,7 +2321,7 @@ Resources:
   # This Lambda Function for Geofence Utility Log Grop
   #-----------------------------------------------------------------------------
   
-  LogsLogGroup:
+  GeofenceUtilityGroup:
     Type: AWS::Logs::LogGroup
     DependsOn: GeofenceUtility
     Properties:
@@ -2389,7 +2389,7 @@ Resources:
   # This Lambda Function for Geofence Dispatcher Log Grop
   #-----------------------------------------------------------------------------
   
-  LogsLogGroup:
+  GeofenceDispatcherGroup:
     Type: AWS::Logs::LogGroup
     DependsOn: GeofenceDispatcher
     Properties:
