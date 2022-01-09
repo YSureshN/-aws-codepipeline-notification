@@ -833,7 +833,7 @@ Resources:
   DynamoDBMangedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties: 
-      Description: Managed Policy to attach to MyTestRole Role
+      Description: Managed Policy to attach to GeofenceActivater Role
       ManagedPolicyName: dynamodbaccessforlambda
       Path: /
       PolicyDocument: 
@@ -976,6 +976,53 @@ Resources:
               - 'arn:aws:geo:*:567234402044:geofence-collection/*'
               - 'arn:aws:geo:*:567234402044:tracker/*'
               - 'arn:aws:geo:*:567234402044:route-calculator/*'
+      Roles: 
+        - !Ref GeofenceActivaterRole
+  
+  AWSLambdaMSKExecutionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceActivaterRole Role
+      ManagedPolicyName: LocationServicesforlambda
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'kafka:DescribeCluster'
+              - 'kafka:GetBootstrapBrokers'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:DescribeNetworkInterfaces'
+              - 'ec2:DescribeVpcs'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:DescribeSubnets'
+              - 'ec2:DescribeSecurityGroups'
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+            Resource: '*'
+      Roles: 
+        - !Ref GeofenceActivaterRole
+
+  GeofenceActivaterlambdavpc:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:DescribeNetworkInterfaces'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:AssignPrivateIpAddresses'
+              - 'ec2:UnassignPrivateIpAddresses'
+            Resource: '*'
+      PolicyName: GeofenceActivaterflambdavpc
       Roles: 
         - !Ref GeofenceActivaterRole
   
