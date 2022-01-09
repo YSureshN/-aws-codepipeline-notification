@@ -2273,6 +2273,17 @@ Resources:
           Value: !Ref ApplicationName
   
   #-----------------------------------------------------------------------------
+  # This Lambda Function for Geofence Activater Log Grop
+  #-----------------------------------------------------------------------------
+  
+  LogsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: GeofenceActivater
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${GeofenceActivater}"
+      RetentionInDays: 30
+  
+  #-----------------------------------------------------------------------------
   # This Lambda Function for Geofence Utility Runtime is python3.9
   #-----------------------------------------------------------------------------
   
@@ -2305,6 +2316,17 @@ Resources:
           Value: !Ref EnvType
         - Key: Application
           Value: !Ref ApplicationName
+  
+  #-----------------------------------------------------------------------------
+  # This Lambda Function for Geofence Utility Log Grop
+  #-----------------------------------------------------------------------------
+  
+  LogsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: GeofenceUtility
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${GeofenceUtility}"
+      RetentionInDays: 30
   
   #-----------------------------------------------------------------------------
   # This Function for Integrating Lambda with MSK Cluster
@@ -2362,6 +2384,17 @@ Resources:
           Value: !Ref EnvType
         - Key: Application
           Value: !Ref ApplicationName
+  
+  #-----------------------------------------------------------------------------
+  # This Lambda Function for Geofence Dispatcher Log Grop
+  #-----------------------------------------------------------------------------
+  
+  LogsLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: GeofenceDispatcher
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${GeofenceDispatcher}"
+      RetentionInDays: 30
   
   #-----------------------------------------------------------------------------
   # This Function for Events Rule Creating
