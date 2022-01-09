@@ -983,7 +983,7 @@ Resources:
     Type: AWS::IAM::ManagedPolicy
     Properties: 
       Description: Managed Policy to attach to GeofenceActivaterRole Role
-      ManagedPolicyName: LocationServicesforlambda
+      ManagedPolicyName: GeofenceActivaterLambdaMSKExecutionRole
       Path: /
       PolicyDocument: 
         Version: "2012-10-17"
