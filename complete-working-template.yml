@@ -1,5 +1,10 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'This AWS CloudFormation Template is for Telematics Geofence API'
+
+#-----------------------------------------------------------------------------
+# Parameters
+#-----------------------------------------------------------------------------
+
 Parameters:
   ApplicationName:
     Type: String
@@ -28,6 +33,10 @@ Parameters:
     MinValue: '1'
     MaxValue: '10'
     ConstraintDescription: must be between 1 and 10
+
+#-----------------------------------------------------------------------------
+# Mappings
+#-----------------------------------------------------------------------------
 
 Mappings:
   dev:
@@ -213,6 +222,9 @@ Mappings:
       "PASSWORD": "herc"
       "VASID": "3140"
       "FROM": "27126"
+#-----------------------------------------------------------------------------
+# Conditions
+#-----------------------------------------------------------------------------
 
 Conditions:
   CreateProdResouces: !Or [!Equals [ !Ref EnvType, prod ], !Equals [ !Ref EnvType, stg ]]
@@ -223,7 +235,9 @@ Resources:
   # IAM All Roles for telematics geofence Api
   #-----------------------------------------------------------------------------
   
+  #-----------------------------------------------------------------------------
   # This Role for Appsync
+  #-----------------------------------------------------------------------------
   AppsyncRole:
     Type: AWS::IAM::Role
     Properties:
@@ -2570,9 +2584,11 @@ Resources:
           Resource: !Ref AlertMessageQueue
       Queues:
       - !Ref AlertMessageQueue
+
 #-----------------------------------------------------------------------------
 # Outputs-----Outputs---Outputs---Outputs
 #-----------------------------------------------------------------------------
+
 Outputs:
   GraphQLApiARN:
     Description: The Api ARN of the GraphQL endpoint.
