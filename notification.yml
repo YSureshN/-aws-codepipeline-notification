@@ -6,232 +6,253 @@ Description: Pipeline Notification Lambda
 #-----------------------------------------------------------------------------
 Parameters:
 
-  LambdaName:
-    Description: Name for the PipelineNotification Lambda
+  TeamsURL:
+    Description: "Incoming Microsoft Teams Webhook URL"
     Type: String
-    Default: PipelineNotification
+    Default: "https://deloitte.webhook.office.com/webhookb2/79589173-7693-4d17-9763-1aec2148c66e@36da45f1-dd2c-4d1f-af13-5abe46b99921/IncomingWebhook/399892bacb0e49988ef0786ec4d4b7c9/4ea7e67b-20c3-4773-bc1b-d82aa1940d79"
 
-  Env:
+  CodePipelineName:
+    Description: "Codepipeline Name"
     Type: String
-    Default: msteams
-    Description: Messenger to recieve Notifications
-    AllowedValues:
-      - slack
-      - msteams
-
-  WebhookUrl:
-      Type: String
-      Default: https://deloitte.webhook.office.com/webhookb2/79589173-7693-4d17-9763-1aec2148c66e@36da45f1-dd2c-4d1f-af13-5abe46b99921/IncomingWebhook/cc96aa7b8ca14183a3fca128933e044c/4ea7e67b-20c3-4773-bc1b-d82aa1940d79
-      Description: Incoming Webhook URL to send messages to
+    Default: "telematics-eks-light-api" 
 
 #-----------------------------------------------------------------------------
 #Resources
 #-----------------------------------------------------------------------------
 Resources:
-  LambdaBasicExecutionRole:
-      Type: AWS::IAM::Role
-      Properties:
-        AssumeRolePolicyDocument:
-          Version: 2012-10-17
-          Statement:
-            - Effect: Allow
-              Principal:
-                Service:
-                  - lambda.amazonaws.com
-              Action:
-                - sts:AssumeRole
-        Policies:
-        - PolicyName: LambdaLoggingRule
+  NotificationLambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: index.index_handler
+      Code:
+        ZipFile: |
+            import urllib3
+            import json
+            import os
+            import boto3
+            from datetime import datetime
+            http = urllib3.PoolManager()
+            def index_handler(event, context):
+                pipeline = boto3.client('codepipeline')
+                response = pipeline.get_pipeline(name = 'telematics-eks-light-api')
+                stage = response['pipeline']['stages']
+                sts = boto3.client('sts')
+                sts_val = sts.get_caller_identity()
+                user = sts_val['UserId']
+                url = os.environ['TEAMS_URL']
+                event_message = event['Records'][0]['Sns']['Message']
+                message_dict = json.loads(event_message)
+                pipeline_name = message_dict["detail"]["pipeline"]
+                pipeline_status = message_dict["detail"]["state"]
+                execution_id = message_dict["detail"]["execution-id"]
+                # text = f"Code Pipeline: {pipeline_name} with execution-id {execution_id} has: {pipeline_status}."
+                aws_account_id = message_dict['account']
+                aws_region = message_dict['region']
+                event_time = sts_val['ResponseMetadata']['HTTPHeaders']['date']
+                # event_time = datetime.now().isoformat(timespec='seconds')
+                color = '#808080'
+                if pipeline_status=="SUCCEEDED" : 
+                    title = "[Green Alert] - Code Pipeline Success"
+                    color = '#00ff00'
+                elif pipeline_status== "STARTED" : 
+                    title = "[Yellow Alert] - Code Pipeline Started"
+                    color = '#FFFF00'
+                elif pipeline_status== "FAILED" : 
+                    title = "[Red Alert] - Code Pipeline Failed"
+                    color = '#ff0000'
+                
+                pipeline_url = f'''https://console.aws.amazon.com/codesuite/codepipeline/pipelines/{pipeline_name}/view?region={aws_region}'''
+                for i in stage:
+                    actions = i['actions']
+                    for x in actions:
+                        stage_name = x['name']
+                        provider = x['actionTypeId']['provider']
+                        category = x['actionTypeId']['category']
+                        print(stage_name)
+                        config = x['configuration']
+                        if(category == 'Source' and provider == 'CodeCommit'):
+                            branchname = config['BranchName']
+                            reponame = config['RepositoryName']
+                
+                msg = {
+                    "@context": "https://schema.org/extensions",
+                    "@type": "MessageCard",
+                    "themeColor": color,
+                    "text": "Herc Rentals",
+                    "title": title,
+                    "sections": [{
+                        "facts": [{
+                            "name": "Pipeline",
+                            "value": f"{pipeline_name}"
+                        }, {
+                            "name": "Repository Name",
+                            "value": f"{reponame}"
+                        }, {
+                            "name": "Branch Name",
+                            "value": f"{branchname}"
+                        }, {
+                            "name": "Execution Id",
+                            "value": f"{execution_id}"
+                        }, {
+                            "name": "Status",
+                            "value": f"{pipeline_status}"
+                        }, {
+                            "name": "Execution Time",
+                            "value": f"{event_time}"
+                        }, {
+                            "name": "User Id",
+                            "value": f"{user}"
+                        }],
+                        "markdown": True
+                    }],
+                    "potentialAction": [{
+                                
+                        "@type": "OpenUri",
+                        "name": "Approve",
+                        "targets": [{
+                            "os": "default",
+                            "uri": pipeline_url
+                        }]
+                    }
+                    ]
+                    
+                }
+                encoded_msg = json.dumps(msg).encode('utf-8')
+                resp = http.request('POST', url, body=encoded_msg)
+                print({
+                    "message": pipeline_name,
+                    "status_code": resp.status,
+                    "response": resp.data
+                })
+            #     message = {
+            #         "mailContentType": "text",
+            #         "mailBody": text,
+            #         "mailSubject": title,
+            #         "toAddresses": os.environ["EMAIL_LIST"]
+            #     }
+            #     boto3.client("sns").publish(
+            #         TargetArn=os.environ["SNS_TOPIC"],
+            #         Message=json.dumps(message),
+            #     )
+      MemorySize: 128
+      Environment:
+        Variables:
+          TEAMS_URL: !Ref TeamsURL
+      Runtime: 'python3.7'
+      Timeout: 30
+      Role: !GetAtt NotificationLambdaFunctioneRole.Arn
+  NotificationLambdaFunctioneRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: 'lambda.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'customresource'
           PolicyDocument:
-            Version: 2012-10-17
             Statement:
+              - Effect: Allow
+                Action:
+                  - 'sns:*'
+                Resource: '*'
               - Effect: Allow
                 Action:
                   - 'logs:CreateLogGroup'
                   - 'logs:CreateLogStream'
                   - 'logs:PutLogEvents'
                 Resource: '*'
-        Path: /
-
-  PermissionForEventsToInvokeLambdaApproval:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName:
-        !Ref NotifyLambda
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn:
-        Fn::GetAtt:
-          - "CloudWatchRuleApproval"
-          - "Arn"
-
-  PermissionForEventsToInvokeLambdaFailed:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName:
-        !Ref NotifyLambda
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn:
-        Fn::GetAtt:
-          - "CloudWatchRuleFailed"
-          - "Arn"
-
-  NotifyLambda:
-    Type: AWS::Lambda::Function
-    Properties:
-      FunctionName: !Ref LambdaName
-      Description: Sends information about the CodePipeline Status to messengers (Slack/Ms-Teams)
-      Environment:
-        Variables:
-          WebhookUrl: !Ref WebhookUrl
-          Messenger: !Ref Env
-      Handler: index.lambda_handler
-      Runtime: python3.6
-      Role: !GetAtt LambdaBasicExecutionRole.Arn
-      Code:
-        ZipFile: |
-          import json
-          import logging
-          import os
-          import re
-          import requests
-
-
-          HOOK_URL = os.environ['WebhookUrl']
-          MESSENGER = os.environ['Messenger']
-
-          logger = logging.getLogger()
-          logger.setLevel(logging.INFO)
-
-
-          def handler(event, context):
-              '''
-                  main handler
-              '''
-
-              # start logging
-              logger.info(f'Recieved event: {event}')
-
-              # use data from logs
-              pipeline = event['detail']['pipeline']
-              aws_account_id = event['account']
-              aws_region = event['region']
-              event_time = event['time']
-              stage = event['detail']['stage']
-              state = event['detail']['state']
-              action = event['detail']['action']
-              # category = message['detail']['type']['category']
-
-              # set the color depending on state/category for Approval
-              color = '#808080'
-              if action == 'Approval':
-                  color = '#ff9000'
-              elif state == 'SUCCEEDED':
-                  color = '#00ff00'
-              elif state == 'STARTED':
-                  color = '#00bbff'
-              elif state == 'FAILED':
-                  color = '#ff0000'
-              else:
-                  color = '#000000'
-
-              date = re.split('T|Z',event_time)
-              date = f'{date[0]} {date[1]}'
-              pipeline_url = f'''https://{aws_region}.console.aws.amazon.com/codesuite/
-                                  codepipeline/pipelines/{pipeline}/view?region={aws_region}'''
-
-              # build Slack message
-              if MESSENGER == 'slack':
-                  message_data = {
-                      'attachments': [
-                          {
-                              'fallback': 'Pipeline Status',
-                              'color': color,
-                              'author_name': f'{pipeline} - {state} @ {stage}',
-                              'author_icon': 'https://www.awsgeek.com/AWS-History/icons/AWS-CodePipeline.svg',
-                              'fields': [
-                                  { 'title': 'Account', 'value': aws_account_id, 'short': 'false' },
-                                  { 'title': 'Region', 'value': aws_region, 'short': 'false' },
-                                  { 'title': 'Event time (UTC)', 'value': date, 'short': 'false' },
-                                  { 'title': 'Action', 'value': action, 'short': 'false' }
-                              ],
-                              'footer': 'globaldatanet',
-                              'footer_icon': '''https://pbs.twimg.com/profile_images/980056498847010816/
-                                                  JZeg2oTx_400x400.jpg''',
-                              'ts': 1639133471, # TimeStamp for last update
-                              'actions': [
-                                  {
-                                      'type': 'button', 'text':
-                                          { 'type': 'Open in AWS', 'text': 'Link Button' },
-                                      'url': pipeline_url
-                                  }
-                              ]
-                          }
-                      ]
-                  }
-              # build MS Teams message
-              elif HOOK_URL == 'msteams':
-                  message_data = {
-                      'summary': 'summary',
-                      '@type': 'MessageCard',
-                      '@context': 'https://schema.org/extensions',
-                      'themeColor': color,
-                      'title': f'{pipeline}',
-                      'sections': [
-                          {
-                              'facts': [
-                                  { 'name': 'Account', 'value': aws_account_id },
-                                  { 'name': 'Region', 'value': aws_region },
-                                  { 'name': 'Event time (UTC)', 'value': date },
-                                  { 'name': 'Stage', 'value': stage },
-                                  { 'name': 'Action', 'value': action },
-                                  { 'name': 'State', 'value': state }
-                              ],
-                              'markdown': 'true'
-                          }
-                      ],
-                      'potentialAction': {
-                          '@type': 'OpenUrl', 'name': 'Open in AWS', 'targets': [
-                                  { 'os': 'default', 'url': pipeline_url }
-                              ]
-                      }
-                  }
-
-              # send message to webhook
-              requests.post(HOOK_URL, json.dumps(message_data))
-    
-
-  CloudWatchRuleFailed:
+              - Effect: Allow
+                Action:
+                  - 'codepipeline:GetPipeline'
+                  - 'codepipeline:GetActionType'
+                  - 'codepipeline:ListTagsForResource'
+                  - 'codepipeline:GetThirdPartyJobDetails'
+                  - 'codepipeline:GetJobDetails'
+                  - 'codepipeline:ListActionExecutions'
+                  - 'codepipeline:ListPipelines'
+                  - 'codepipeline:GetPipelineExecution'
+                  - 'codepipeline:ListWebhooks'
+                  - 'codepipeline:GetPipelineState'
+                  - 'codepipeline:ListActionTypes'
+                  - 'codepipeline:ListPipelineExecutions'
+                Resource: '*'
+                
+  EventRule:
+    DependsOn: NotificationLambdaFunction
     Type: AWS::Events::Rule
     Properties:
-      Description: CF-Pipeline Notification Rule - FAILED
+      Description: "EventRule"
       EventPattern:
         source:
-          - aws.codepipeline
+          - "aws.codepipeline"
+        detail-type:
+          - "CodePipeline Pipeline Execution State Change"
         detail:
-            state:
-              - FAILED
-      State: ENABLED
+          state:
+            - "STARTED"
+            - "SUCCEEDED"
+            - "FAILED"
+          pipeline:
+            - !Ref CodePipelineName
+        resources:
+          - !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${CodePipelineName}'
+      State: "ENABLED"
       Targets:
-       -
-          Arn: !GetAtt NotifyLambda.Arn
-          Id: NotifyLambda
-
-  CloudWatchRuleApproval:
-    Type: AWS::Events::Rule
+        -
+          Arn:
+            Ref: "SNSTopic"
+          Id: "NotificationTeams"
+  PermissionLambda:
+      DependsOn: NotificationLambdaFunction
+      Type: AWS::Lambda::Permission
+      Properties:
+        FunctionName:
+          Ref: "NotificationLambdaFunction"
+        Action: "lambda:InvokeFunction"
+        Principal: "sns.amazonaws.com"
+        SourceArn: !Ref SNSTopic
+  SNSTopic:
+      DependsOn: NotificationLambdaFunction
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: String
+        Subscription:
+          - Protocol: lambda
+            Endpoint: !GetAtt NotificationLambdaFunction.Arn
+  SnsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    DependsOn: SNSTopic
     Properties:
-      Description: CF-Pipeline Notification Rule - APPROVAL
-      EventPattern:
-        source:
-            - aws.codepipeline
-        detail:
-            state:
-              - STARTED
-            action:
-              - Approval
-      State: ENABLED
-      Targets:
-       -
-          Arn: !GetAtt NotifyLambda.Arn
-          Id: NotifyLambda
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: SnsTopicPolicy
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - "SNS:GetTopicAttributes"
+              - "SNS:SetTopicAttributes"
+              - "SNS:AddPermission"
+              - "SNS:RemovePermission"
+              - "SNS:DeleteTopic"
+              - "SNS:Subscribe"
+              - "SNS:ListSubscriptionsByTopic"
+              - "SNS:Publish"
+              - "SNS:Receive"
+            Resource:
+              Ref: SNSTopic
+          - Sid: SnsTopicPolicyEvent
+            Effect: Allow
+            Principal:
+              Service: "events.amazonaws.com"
+            Action:
+              - "SNS:Publish"
+            Resource:
+              Ref: SNSTopic
+      Topics:
+        - Ref: SNSTopic
