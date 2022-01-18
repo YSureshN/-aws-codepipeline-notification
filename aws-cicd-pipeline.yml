@@ -1,0 +1,504 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: 'This solution allows you to create a AWS Codepipline for deploying a serverless application with AWS CodeBuild triggered by a Github repo commit. The setup of this solution is fully automated via a CloudFormation template.'
+
+Parameters:
+  Environment:
+    AllowedValues:
+    - dev
+    - stg
+    - prod
+    Description: 'Environment'
+    Type: 'String'
+    Default: 'stg'
+
+  CodePipelineBucketPrefix:
+    Description: CodePipeline needs a utility bucket for its internal use. Specify a unique prefix for the bucket name
+    Type: String
+    Default: codepipelineworksuresh
+
+  RepositoryName:
+    Type: String
+    Default: telematics.geofence-cfn
+    Description: Name of the CodeCommit repository
+  
+  BuildDockerImage:
+    Type: String
+    Default: aws/codebuild/ubuntu-base:14.04
+    Description: Docker image to use for the build phase
+  
+  DeployDockerImage:
+    Type: String
+    Default: aws/codebuild/ubuntu-base:14.04
+    Description: Docker image to use for the deployment phase
+
+Resources:
+
+  CodeBuildRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName:
+        'Fn::Join': [ "", ["CodeBuildRole", "-", !Ref 'AWS::StackName', "-", !Ref 'Environment']]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: "Allow"
+          Principal:
+            Service: "codebuild.amazonaws.com"
+          Action: "sts:AssumeRole"
+
+  CodePipelineRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName:
+        'Fn::Join': [ "", ["CodePipelineRole", "-", !Ref 'AWS::StackName', "-", !Ref 'Environment']]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: "Allow"
+          Principal:
+            Service: "codepipeline.amazonaws.com"
+          Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: CanAccessCodeCommit
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement: 
+              - Effect: Allow
+                Action:
+                  - codecommit:GetBranch
+                  - codecommit:GetCommit
+                  - codecommit:UploadArchive
+                  - codecommit:GetUploadArchiveStatus
+                  - 'codecommit:CancelUploadArchive'
+                Resource: "*"
+        
+        - PolicyName: CanAccessS3
+          PolicyDocument: 
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+                  - s3:PutObject
+                  - s3:GetBucketPolicy
+                  - s3:GetObjectAcl
+                  - s3:PutObjectAcl
+                  - s3:DeleteObject
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - codebuild:BatchGetBuilds
+                  - codebuild:StartBuild
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - codebuild:*
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - 'codedeploy:CreateDeployment'
+                  - 'codedeploy:GetApplicationRevision'
+                  - 'codedeploy:GetDeployment'
+                  - 'codedeploy:GetDeploymentConfig'
+                  - 'codedeploy:RegisterApplicationRevision'
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - 'elasticbeanstalk:*'
+                  - 'ec2:*'
+                  - 'elasticloadbalancing:*'
+                  - 'autoscaling:*'
+                  - 'cloudwatch:*'
+                  - 's3:*'
+                  - 'sns:*'
+                  - 'cloudformation:*'
+                  - 'rds:*'
+                  - 'sqs:*'
+                  - 'ecs:*'
+                  - 'ecr:*'
+                  - 'iam:PassRole'
+                  - 'dynamodb:*'
+                  - 'kinesis:*'
+                  - 'lambda:*'
+                  - 'apigateway:*'
+                  - 'events:*'
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - 'lambda:InvokeFunction'
+                  - 'lambda:ListFunctions'
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - 'opsworks:CreateDeployment'
+                  - 'opsworks:DescribeApps'
+                  - 'opsworks:DescribeCommands'
+                  - 'opsworks:DescribeDeployments'
+                  - 'opsworks:DescribeInstances'
+                  - 'opsworks:DescribeStacks'
+                  - 'opsworks:UpdateApp'
+                  - 'opsworks:UpdateStack'
+                Resource: "*"
+
+  # This can be restricted more
+  CodeBuildPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName:
+        'Fn::Join': [ "", ["CodeBuildPolicy", "-", !Ref 'AWS::StackName', "-", !Ref 'Environment']]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              - logs:DescribeLogGroups
+              - logs:FilterLogEvents
+              - logs:DescribeLogStreams
+              - logs:DeleteLogGroup
+              - s3:putObject
+              - s3:getObject
+              - codebuild:*
+              - 'cloudformation:List*'
+              - 'cloudformation:Get*'
+              - 'cloudformation:PreviewStackUpdate'
+              - 'cloudformation:ValidateTemplate'
+              - 'cloudformation:CreateStack'
+              - 'cloudformation:CreateUploadBucket'
+              - 'cloudformation:DeleteStack'
+              - 'cloudformation:Describe*'
+              - 'cloudformation:UpdateStack'
+              - 'lambda:Get*'
+              - 'lambda:List*'
+              - 'lambda:CreateFunction'
+              - 'lambda:AddPermission'
+              - 'lambda:CreateAlias'
+              - 'lambda:DeleteFunction'
+              - 'lambda:InvokeFunction'
+              - 'lambda:PublishVersion'
+              - 'lambda:RemovePermission'
+              - 'lambda:Update*'
+              - 'lambda:UpdateFunctionCode'
+              - 'lambda:AddPermission'
+              - 'lambda:CreateAlias'
+              - 'lambda:UpdateAlias'
+              - 'lambda:DeleteAlias'
+              - 'lambda:UpdateFunctionConfiguration'
+              - 'lambda:PutFunctionConcurrency'
+              - 'lambda:DeleteFunctionConcurrency'
+              - 'lambda:PublishVersion'
+              - 'apigateway:GET'
+              - 'apigateway:POST'
+              - 'apigateway:PUT'
+              - 'apigateway:DELETE'
+              - 's3:CreateBucket'
+              - 's3:DeleteBucket'
+              - 's3:ListBucket'
+              - 's3:ListBucketVersions'
+              - 's3:GetBucketVersioning'
+              - 's3:PutObject'
+              - 's3:GetObject'
+              - 's3:DeleteObject'
+              - 'iam:PassRole'
+              - 'kinesis:*'
+              - 'iam:GetRole'
+              - 'iam:CreateRole'
+              - 'iam:PutRolePolicy'
+              - 'iam:DeleteRolePolicy'
+              - 'iam:DeleteRole'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'events:Put*'
+              - 'events:Remove*'
+              - 'events:Delete*'
+              - 'dynamodb:*'
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - codecommit:GetBranch
+              - codecommit:GetCommit
+              - codecommit:UploadArchive
+              - codecommit:GetUploadArchiveStatus
+              - codecommit:CancelUploadArchive
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - codebuild:BatchGetBuilds
+              - codebuild:StartBuild
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - codebuild:*
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - 'codedeploy:CreateDeployment'
+              - 'codedeploy:GetApplicationRevision'
+              - 'codedeploy:GetDeployment'
+              - 'codedeploy:GetDeploymentConfig'
+              - 'codedeploy:RegisterApplicationRevision'
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - 'elasticbeanstalk:*'
+              - 'ec2:*'
+              - 'elasticloadbalancing:*'
+              - 'autoscaling:*'
+              - 'cloudwatch:*'
+              - 's3:*'
+              - 'sns:*'
+              - 'cloudformation:*'
+              - 'rds:*'
+              - 'sqs:*'
+              - 'ecs:*'
+              - 'ecr:*'
+              - 'iam:PassRole'
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - 'lambda:InvokeFunction'
+              - 'lambda:ListFunctions'
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - 'opsworks:CreateDeployment'
+              - 'opsworks:DescribeApps'
+              - 'opsworks:DescribeCommands'
+              - 'opsworks:DescribeDeployments'
+              - 'opsworks:DescribeInstances'
+              - 'opsworks:DescribeStacks'
+              - 'opsworks:UpdateApp'
+              - 'opsworks:UpdateStack'
+            Resource: "*"
+      Roles:
+        -  !Ref CodeBuildRole
+
+  CodePipelinePolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName:
+        'Fn::Join': [ "", ["CodePipelinePolicy", "-", !Ref 'AWS::StackName', "-", !Ref 'Environment']]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - s3:putObject
+            - s3:getObject
+            - codebuild:*
+          Resource:
+            - "*"
+      Roles:
+        -  !Ref CodePipelineRole
+
+  PipelineS3Bucket:
+    Type: "AWS::S3::Bucket"
+    # Properties:
+    #   BucketName: !Join [ "", [!Ref CodePipelineBucketPrefix, !Ref 'Environment', "-", !Ref "AWS::Region"]]
+
+  DevDeploy:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: Development
+      Artifacts:
+        Type: CODEPIPELINE
+        EncryptionDisabled: true
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: IMAGE_TAG
+            Type: PLAINTEXT
+            Value: latest
+          - Name: IMAGE_REPO_NAME
+            Type: PLAINTEXT
+            Value: qa.telematics.eksalertapi
+          - Name: AWS_CLUSTER_NAME
+            Type: PLAINTEXT
+            Value: dev-elevatetelematics-ms
+          - Name: AWS_DEFAULT_REGION
+            Type: PLAINTEXT
+            Value: us-east-1
+          - Name: AWS_ACCOUNT_ID
+            Type: PLAINTEXT
+            Value: 567234402044
+          - Name: DOCKERHUB_PASSWORD
+            Type: SECRETS_MANAGER
+            Value: devdockerbuild:password
+          - Name: DOCKERHUB_USERNAME
+            Type: SECRETS_MANAGER
+            Value: devdockerbuild:username
+          - Name: TELEMATICS_DB_DEV
+            Type: SECRETS_MANAGER
+            Value: telematics/elevate:dev
+          - Name: TELEMATICS_DB_QA
+            Type: SECRETS_MANAGER
+            Value: telematics/elevate:qa
+        Image: !Ref DeployDockerImage
+        Type: LINUX_CONTAINER
+      ServiceRole: !Ref CodeBuildRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: Devdeployspec.yml
+
+  QaDeploy:
+    Type: AWS::CodeBuild::Project
+    Properties: 
+      Name: Qa
+      Artifacts:
+        Type: CODEPIPELINE
+        EncryptionDisabled: true
+      Environment:
+        ComputeType: BUILD_GENERAL1_SMALL
+        EnvironmentVariables:
+          - Name: IMAGE_TAG
+            Type: PLAINTEXT
+            Value: latest
+          - Name: IMAGE_REPO_NAME
+            Type: PLAINTEXT
+            Value: qa.telematics.eksalertapi
+          - Name: AWS_CLUSTER_NAME
+            Type: PLAINTEXT
+            Value: dev-elevatetelematics-ms
+          - Name: AWS_DEFAULT_REGION
+            Type: PLAINTEXT
+            Value: us-east-1
+          - Name: AWS_ACCOUNT_ID
+            Type: PLAINTEXT
+            Value: 567234402044
+          - Name: DOCKERHUB_PASSWORD
+            Type: SECRETS_MANAGER
+            Value: devdockerbuild:password
+          - Name: DOCKERHUB_USERNAME
+            Type: SECRETS_MANAGER
+            Value: devdockerbuild:username
+          - Name: TELEMATICS_DB_DEV
+            Type: SECRETS_MANAGER
+            Value: telematics/elevate:dev
+          - Name: TELEMATICS_DB_QA
+            Type: SECRETS_MANAGER
+            Value: telematics/elevate:qa
+        Image: !Ref DeployDockerImage
+        Type: LINUX_CONTAINER
+      ServiceRole: !Ref CodeBuildRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: Qadeployspec.yml
+
+  # CodePipeline with its stages:
+  Pipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      Name: !Join [ "", ["DevOps-Pipeline", "-", !Ref 'AWS::StackName'] ]
+      Tags: 
+        - Key: "Environment"
+          Value: 
+              Ref: Environment         
+        - Key: "ResourceType"
+          Value: "AWS CodePipeline"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics-lambdadeploy
+      ArtifactStore:
+        Location: !Ref PipelineS3Bucket
+        Type: S3
+      RestartExecutionOnUpdate: true
+      RoleArn: !Join [ "", ["arn:aws:iam::", !Ref "AWS::AccountId", ":role/", !Ref CodePipelineRole  ] ]
+      Stages:
+
+        # Stage 1:  Get the source from Codecommit:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeCommit
+                Version: 1
+              Configuration:
+                RepositoryName: !Ref RepositoryName
+                BranchName: cicd-pipeline
+              OutputArtifacts:
+                - Name: TheSourceCode
+
+        # Stage 2:  Build using for deploy in Dev Environment
+        - Name: DevDeploy
+          Actions:
+            - Name: DevDeploy
+              RunOrder: 1
+              InputArtifacts:
+                - Name: TheSourceCode
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:  !Ref DevDeploy
+              OutputArtifacts:
+                - Name: TheArtifact
+        
+        # Stage 3:  Build to Qa Deploy Manual Approval
+        - Actions:
+            - ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Provider: Manual
+                Version: '1'
+              Configuration:
+                NotificationArn: arn:aws:sns:us-east-1:567234402044:ApprovalRequestNotification
+              InputArtifacts: []
+              Name: TestApproval
+              RunOrder: 1
+          Name: Development_Approval
+
+        # Stage 4:  Build using for deploy in Qa Environment
+        - Name: QaDeploy
+          Actions:
+            - Name: QaDeploy
+              RunOrder: 1
+              InputArtifacts:
+                - Name: TheArtifact
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: 1
+              Configuration:
+                ProjectName:  !Ref QaDeploy
+              OutputArtifacts:
+                - Name: TheArtifact2
+
+Outputs:
+  CodeBuild:
+    Value: !Ref Pipeline
+  Environment:
+    Value: !Ref Environment
+  # Github:
+  #   Value: !Ref GitHubRepository
+  CodeBuildRole:
+    Value: !Ref CodeBuildRole
+  CodeBuildPolicy:
+    Value: !Ref CodeBuildPolicy
+  CodePipelineRole:
+    Value: !Ref CodePipelineRole
+  CodePipelinePolicy:
+    Value: !Ref CodePipelinePolicy
+  S3:
+    Value: !Ref PipelineS3Bucket
