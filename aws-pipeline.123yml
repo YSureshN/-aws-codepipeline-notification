@@ -1,0 +1,863 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: An AWS Lambda application.
+Parameters:
+  Environment:
+    Description: 'Environment: dev,qa,stg,prod' 
+    Type: String
+    Default: 'qa'
+    AllowedValues:
+      - dev
+      - qa
+      - stg
+      - prod
+    ConstraintDescription: must be either 'dev','qa','stg' or 'prod'
+
+  S3BucketName:
+    Description: The S3 bucket that contains the application code.
+    Type: String
+    Default: 'dev.elevateteledata'
+
+  S3BucketKey:
+    Description: The S3 bucket that contains the application code.
+    Type: String
+    Default: 'geofence-dispatcher-7334/telematics.geofenceDispatcher-1.0-SNAPSHOT.jar'
+
+  
+Mappings:
+  dev:
+    Layer:
+      "VpcId": "vpc-1081ac74"
+      "SubnetId1": "subnet-dd038785"
+      "SubnetId2": "subnet-bc28a093"
+      "SecurityGroupID": "sg-9bad17e3" # need to add sg-96aa31ee
+      "PubSubnetId1": "subnet-a04ee1f8"
+      "PubSubnetId2": "subnet-191faa33"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "7"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:dev}}"
+            
+  qa:
+    Layer:
+      "VpcId": "vpc-9ad5dafe"
+      "SubnetId1": "subnet-86e163de"
+      "SubnetId2": "subnet-b0813a9a"
+      "SecurityGroupID": "sg-9ecb8fe6"
+      "PubSubnetId1": "subnet-a6e062fe"
+      "PubSubnetId2": "subnet-2482390e"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "7"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:qa}}"
+
+  stg:
+    Layer:
+      "VpcId": "vpc-a29785c6"
+      "SubnetId1": "subnet-fdf1bdc0"
+      "SubnetId2": "subnet-f54d3383"
+      "SecurityGroupID": "sg-9bad17e3"
+      "PubSubnetId1": "subnet-024f3174"
+      "PubSubnetId2": "subnet-85f0bcb8"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "14"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:stg}}"
+
+  prod:
+    Layer:
+      "VpcId": "vpc-e8ece28c"
+      "SubnetId1": "subnet-ca7e0bbc"
+      "SubnetId2": "subnet-939d27b9"
+      "SecurityGroupID": "sg-9bad17e3"
+      "PubSubnetId1": "subnet-cb7e0bbd"
+      "PubSubnetId2": "subnet-0ece4356"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "30"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:prod}}"
+
+# Conditions:
+#   CreateProdResouces: !Or [!Equals [ !Ref Environment, prod ], !Equals [ !Ref Environment, stg ]]
+#   CreateDevResouces: !Or [!Equals [ !Ref Environment, dev ], !Equals [ !Ref Environment, qa ]]
+
+Resources:
+  
+  #-----------------------------------------------------------------------------
+  # This Role for GeofenceDispatcher Lambda
+  #-----------------------------------------------------------------------------
+  
+  GeofenceDispatcherRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide access to GeofenceDispatcher
+      Policies:
+        - PolicyName: EmbeddedInlinePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'cloudformation:*'
+                Resource: '*'
+              - Effect: "Allow"
+                Action:
+                  - "ec2:CreateNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:DetachNetworkInterface"
+                  - "ec2:DeleteNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:AssignPrivateIpAddresses"
+                  - "ec2:UnassignPrivateIpAddresses"
+                  - "ec2:AttachNetworkInterface"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      RoleName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofence-Dispatcher-Lambda-RDS-FullAccess
+  
+  GeofenceDispatcherLocationServices:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceDispatcher Role
+      ManagedPolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofence-Dispatcher-LocationServices
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'geo:ListMaps'
+              - 'geo:ListTrackers'
+              - 'geo:ListRouteCalculators'
+              - 'geo:ListGeofenceCollections'
+              - 'geo:ListPlaceIndexes'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'geo:*'
+            Resource:
+              - 'arn:aws:geo:*:567234402044:map/*'
+              - 'arn:aws:geo:*:567234402044:place-index/*'
+              - 'arn:aws:geo:*:567234402044:geofence-collection/*'
+              - 'arn:aws:geo:*:567234402044:tracker/*'
+              - 'arn:aws:geo:*:567234402044:route-calculator/*'
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  GeofenceDispatcherSecretmanagerReadOnly:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceDispatcher Role
+      ManagedPolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofence-Dispatcher-SecretmanagerReadOnly
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'secretsmanager:GetRandomPassword'
+              - 'secretsmanager:GetResourcePolicy'
+              - 'secretsmanager:UntagResource'
+              - 'secretsmanager:GetSecretValue'
+              - 'secretsmanager:DescribeSecret'
+              - 'secretsmanager:ListSecretVersionIds'
+              - 'secretsmanager:ListSecrets'
+              - 'secretsmanager:TagResource'
+            Resource: '*'
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  GeofenceDispatcherdynamodbaccess:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:List*'
+              - 'dynamodb:DescribeReservedCapacity*'
+              - 'dynamodb:DescribeLimits'
+              - 'dynamodb:DescribeTimeToLive'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'dynamodb:BatchGet*'
+              - 'dynamodb:DescribeStream'
+              - 'dynamodb:DescribeTable'
+              - 'dynamodb:Get*'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+              - 'dynamodb:BatchWrite*'
+              - 'dynamodb:CreateTable'
+              - 'dynamodb:Update*'
+              - 'dynamodb:PutItem'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+              - 'dax:*'
+              - 'application-autoscaling:DeleteScalingPolicy'
+              - 'application-autoscaling:DeregisterScalableTarget'
+              - 'application-autoscaling:DescribeScalableTargets'
+              - 'application-autoscaling:DescribeScalingActivities'
+              - 'application-autoscaling:DescribeScalingPolicies'
+              - 'application-autoscaling:PutScalingPolicy'
+              - 'application-autoscaling:RegisterScalableTarget'
+              - 'cloudwatch:DeleteAlarms'
+              - 'cloudwatch:DescribeAlarmHistory'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:DescribeAlarmsForMetric'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'cloudwatch:ListMetrics'
+              - 'cloudwatch:PutMetricAlarm'
+              - 'cloudwatch:GetMetricData'
+              - 'datapipeline:ActivatePipeline'
+              - 'datapipeline:CreatePipeline'
+              - 'datapipeline:DeletePipeline'
+              - 'datapipeline:DescribeObjects'
+              - 'datapipeline:DescribePipelines'
+              - 'datapipeline:GetPipelineDefinition'
+              - 'datapipeline:ListPipelines'
+              - 'datapipeline:PutPipelineDefinition'
+              - 'datapipeline:QueryObjects'
+              - 'ec2:DescribeVpcs'
+              - 'ec2:DescribeSubnets'
+              - 'ec2:DescribeSecurityGroups'
+              - 'iam:GetRole'
+              - 'iam:ListRoles'
+              - 'kms:DescribeKey'
+              - 'kms:ListAliases'
+              - 'sns:CreateTopic'
+              - 'sns:DeleteTopic'
+              - 'sns:ListSubscriptions'
+              - 'sns:ListSubscriptionsByTopic'
+              - 'sns:ListTopics'
+              - 'sns:Subscribe'
+              - 'sns:Unsubscribe'
+              - 'sns:SetTopicAttributes'
+              - 'lambda:CreateFunction'
+              - 'lambda:ListFunctions'
+              - 'lambda:ListEventSourceMappings'
+              - 'lambda:CreateEventSourceMapping'
+              - 'lambda:DeleteEventSourceMapping'
+              - 'lambda:GetFunctionConfiguration'
+              - 'lambda:DeleteFunction'
+              - 'resource-groups:ListGroups'
+              - 'resource-groups:ListGroupResources'
+              - 'resource-groups:GetGroup'
+              - 'resource-groups:GetGroupQuery'
+              - 'resource-groups:DeleteGroup'
+              - 'resource-groups:CreateGroup'
+              - 'tag:GetResources'
+              - 'kinesis:ListStreams'
+              - 'kinesis:DescribeStream'
+              - 'kinesis:DescribeStreamSummary'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'cloudwatch:GetInsightRuleReport'
+            Resource: 'arn:aws:cloudwatch:*:*:insight-rule/DynamoDBContributorInsights*'
+          
+          - Effect: Allow
+            Action: 'iam:PassRole'
+            Resource: '*'
+            Condition:
+              StringLike:
+                iam:PassedToService:
+                  - 'application-autoscaling.amazonaws.com'
+                  - 'application-autoscaling.amazonaws.com.cn'
+                  - 'dax.amazonaws.com'
+          
+          - Effect: Allow
+            Action: 'iam:CreateServiceLinkedRole'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - 'replication.dynamodb.amazonaws.com'
+                  - 'dax.amazonaws.com'
+                  - 'dynamodb.application-autoscaling.amazonaws.com'
+                  - 'contributorinsights.dynamodb.amazonaws.com'
+                  - 'kinesisreplication.dynamodb.amazonaws.com'
+      PolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofence-Dispatcher-dynamodbaccess
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  GeofenceDispatcherlambdavpc:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceActivaterRole Role
+      ManagedPolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofence-Dispatcher-lambdavpc
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:DescribeNetworkInterfaces'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:AssignPrivateIpAddresses'
+              - 'ec2:UnassignPrivateIpAddresses'
+            Resource: '*'
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  GeofenceDispatchersesaccess:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ses:*'
+            Resource: '*'
+      PolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofence-Dispatcher-sesaccess
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  GeofenceDispatchersqsaccess:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'sqs:*'
+            Resource: '*'
+      PolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofence-Dispatcher-sqsaccess
+      Roles: 
+        - !Ref GeofenceDispatcherRole
+  
+  #-----------------------------------------------------------------------------
+  # This lambda for creation of all services including Lambda
+  #-----------------------------------------------------------------------------
+
+  GeofenceDispatcher:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: 
+        'Fn::Join':
+          - '-'
+          - - Ref: Environment
+            - telematics-geofenceDispatcher-lambda
+      Tags: 
+        - Key: "Environment"
+          Value: 
+            Ref: Environment         
+        - Key: "ResourceType"
+          Value: "Lambda"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics-geofenceDispatcher-lambda
+      TracingConfig:
+        Mode: Active
+      Handler: herc.telematics.macequipment.FetchMacEligibleEquipmentDetails
+      Code:
+        S3Bucket: 
+          Ref: S3BucketName # dev.telematics.inartifacts
+        S3Key: 
+          Ref: S3BucketKey # lambda_function/mac-eligible-equipment-0.0.1-SNAPSHOT.jar
+      Environment:
+        Variables:
+          QUEUE_NAME: dev-telematics-internal-dispatcher-alert-message-queue
+          # ConnectionString: '{{resolve:secretsmanager:telematics/elevate:SecretString:qa}}'
+      Runtime: java11
+      Description: Java function
+      MemorySize: 512
+      Timeout: 300
+      VpcConfig:
+        SubnetIds:
+          - !FindInMap [ !Ref "Environment", Layer, SubnetId1 ]
+          - !FindInMap [ !Ref "Environment", Layer, SubnetId2 ]
+        SecurityGroupIds: 
+          - !FindInMap [ !Ref "Environment", Layer, SecurityGroupID ]
+      Role: !GetAtt GeofenceDispatcherRole.Arn
+      #Role: !Sub arn:aws:iam::${AWS::AccountId}:role/Lambda_RDS_FullAccess
+  
+  #-----------------------------------------------------------------------------
+  # This Lambda Function for Geofence Dispatcher Log Grop
+  #-----------------------------------------------------------------------------
+  
+  GeofenceDispatcherGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: GeofenceDispatcher
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${GeofenceDispatcher}"
+      RetentionInDays: 30
+
+  #-----------------------------------------------------------------------------
+  # This Function for Events Rule Creating
+  #-----------------------------------------------------------------------------
+  
+  EventBridgeRule:
+    Type: AWS::Events::Rule
+    DependsOn: GeofenceDispatcher
+    Properties:
+      Description: catch-all rule for event bus
+      Name:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofencealerts
+      EventPattern:
+        source:
+          - aws.geo
+        detail-type:
+          - Location Geofence Event
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt GeofenceDispatcher.Arn
+          Id: lambda-function
+
+  #-----------------------------------------------------------------------------
+  # This Function for EventBridgeInvokeFunctionPermission integration
+  #-----------------------------------------------------------------------------
+  
+  EventBridgeInvokeFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref "GeofenceDispatcher"
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt EventBridgeRule.Arn
+ Resources:
+  
+  #-----------------------------------------------------------------------------
+  # This IAM Role for Lambda GeofenceActivater with Kinesis
+  #-----------------------------------------------------------------------------
+  
+  GeofenceActivaterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Role to provide access to S3,CloudWatch,Kinesis,Dynamodb,VPC,LocationService,MSK
+      Policies:
+        - PolicyName: EmbeddedInlinePolicyToGeofenceActivater
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 'cloudformation:*'
+                Resource: '*'
+              - Effect: "Allow"
+                Action:
+                  - "ec2:CreateNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:DetachNetworkInterface"
+                  - "ec2:DeleteNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:AssignPrivateIpAddresses"
+                  - "ec2:UnassignPrivateIpAddresses"
+                  - "ec2:AttachNetworkInterface"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
+        - arn:aws:iam::aws:policy/AWSLambdaInvocation-DynamoDB
+      RoleName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofenceactivatortest-Lambda-API
+  
+  DynamoDBMangedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceActivater Role
+      ManagedPolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofenceactivatortest-dynamodbaccess
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'dynamodb:List*'
+              - 'dynamodb:DescribeReservedCapacity*'
+              - 'dynamodb:DescribeLimits'
+              - 'dynamodb:DescribeTimeToGeofenceActivaterRoleLive'
+            Resource: '*'
+          
+          - Effect: Allow
+            Action:
+              - 'dynamodb:BatchGet*'
+              - 'dynamodb:DescribeStream'
+              - 'dynamodb:DescribeTable'
+              - 'dynamodb:Get*'
+              - 'dynamodb:Query'
+              - 'dynamodb:Scan'
+              - 'dynamodb:BatchWrite*'
+              - 'dynamodb:CreateTable'
+              - 'dynamodb:Update*'
+              - 'dynamodb:PutItem'
+            Resource: '*'
+          
+          - Effect: Allow
+            Action:
+              - 'dynamodb:*'
+              - 'dax:*'
+              - 'application-autoscaling:DeleteScalingPolicy'
+              - 'application-autoscaling:DeregisterScalableTarget'
+              - 'application-autoscaling:DescribeScalableTargets'
+              - 'application-autoscaling:DescribeScalingActivities'
+              - 'application-autoscaling:DescribeScalingPolicies'
+              - 'application-autoscaling:PutScalingPolicy'
+              - 'application-autoscaling:RegisterScalableTarget'
+              - 'cloudwatch:DeleteAlarms'
+              - 'cloudwatch:DescribeAlarmHistory'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:DescribeAlarmsForMetric'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'cloudwatch:ListMetrics'
+              - 'cloudwatch:PutMetricAlarm'
+              - 'cloudwatch:GetMetricData'
+              - 'datapipeline:ActivatePipeline'
+              - 'datapipeline:CreatePipeline'
+              - 'datapipeline:DeletePipeline'
+              - 'datapipeline:DescribeObjects'
+              - 'datapipeline:DescribePipelines'
+              - 'datapipeline:GetPipelineDefinition'
+              - 'datapipeline:ListPipelines'
+              - 'datapipeline:PutPipelineDefinition'
+              - 'datapipeline:QueryObjects'
+              - 'ec2:DescribeVpcs'
+              - 'ec2:DescribeSubnets'
+              - 'ec2:DescribeSecurityGroups'
+              - 'iam:GetRole'
+              - 'iam:ListRoles'
+              - 'kms:DescribeKey'
+              - 'kms:ListAliases'
+              - 'sns:CreateTopic'
+              - 'sns:DeleteTopic'
+              - 'sns:ListSubscriptions'
+              - 'sns:ListSubscriptionsByTopic'
+              - 'sns:ListTopics'
+              - 'sns:Subscribe'
+              - 'sns:Unsubscribe'
+              - 'sns:SetTopicAttributes'
+              - 'lambda:CreateFunction'
+              - 'lambda:ListFunctions'
+              - 'lambda:ListEventSourceMappings'
+              - 'lambda:CreateEventSourceMapping'
+              - 'lambda:DeleteEventSourceMapping'
+              - 'lambda:GetFunctionConfiguration'
+              - 'lambda:DeleteFunction'
+              - 'resource-groups:ListGroups'
+              - 'resource-groups:ListGroupResources'
+              - 'resource-groups:GetGroup'
+              - 'resource-groups:GetGroupQuery'
+              - 'resource-groups:DeleteGroup'
+              - 'resource-groups:CreateGroup'
+              - 'tag:GetResources'
+              - 'kinesis:ListStreams'
+              - 'kinesis:DescribeStream'
+              - 'kinesis:DescribeStreamSummary'
+            Resource: '*'
+          
+          - Effect: Allow
+            Action: 'cloudwatch:GetInsightRuleReport'
+            Resource: 'arn:aws:cloudwatch:*:*:insight-rule/DynamoDBContributorInsights*'
+          
+          - Effect: Allow
+            Action: 'iam:PassRole'
+            Resource: '*'
+            Condition:
+              StringLike:
+                iam:PassedToService:
+                  - 'application-autoscaling.amazonaws.com'
+                  - 'application-autoscaling.amazonaws.com.cn'
+                  - 'dax.amazonaws.com'
+          
+          - Effect: Allow
+            Action: 'iam:CreateServiceLinkedRole'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                  - 'replication.dynamodb.amazonaws.com'
+                  - 'dax.amazonaws.com'
+                  - 'dynamodb.application-autoscaling.amazonaws.com'
+                  - 'contributorinsights.dynamodb.amazonaws.com'
+                  - 'kinesisreplication.dynamodb.amazonaws.com'
+      Roles: 
+        - !Ref GeofenceActivaterRole
+  
+  LocationServicesPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceActivaterRole Role
+      ManagedPolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofenceactivator-LocationServices
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'geo:ListMaps'
+              - 'geo:ListTrackers'
+              - 'geo:ListRouteCalculators'
+              - 'geo:ListGeofenceCollections'
+              - 'geo:ListPlaceIndexes'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'geo:*'
+            Resource:
+              - 'arn:aws:geo:*:567234402044:map/*'
+              - 'arn:aws:geo:*:567234402044:place-index/*'
+              - 'arn:aws:geo:*:567234402044:geofence-collection/*'
+              - 'arn:aws:geo:*:567234402044:tracker/*'
+              - 'arn:aws:geo:*:567234402044:route-calculator/*'
+      Roles: 
+        - !Ref GeofenceActivaterRole
+  
+  AWSLambdaMSKExecutionPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceActivaterRole Role
+      ManagedPolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofenceactivator-MSKExecutionRole
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'kafka:DescribeCluster'
+              - 'kafka:GetBootstrapBrokers'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:DescribeNetworkInterfaces'
+              - 'ec2:DescribeVpcs'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:DescribeSubnets'
+              - 'ec2:DescribeSecurityGroups'
+              - 'ec2:AttachNetworkInterface'
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+            Resource: '*'
+      Roles: 
+        - !Ref GeofenceActivaterRole
+
+  GeofenceActivaterlambdavpc:
+    Type: AWS::IAM::ManagedPolicy
+    Properties: 
+      Description: Managed Policy to attach to GeofenceActivaterRole Role
+      ManagedPolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofenceactivator-lambdavpc
+      Path: /
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:DescribeNetworkInterfaces'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:AssignPrivateIpAddresses'
+              - 'ec2:UnassignPrivateIpAddresses'
+            Resource: '*'
+      Roles: 
+        - !Ref GeofenceActivaterRole
+  
+  #-----------------------------------------------------------------------------
+  # This function for MSK Cluster Creating and Connect to EKS Cluster
+  #-----------------------------------------------------------------------------
+  
+  # GeofenceMSKCluster:
+  #   Type: 'AWS::MSK::Cluster'
+  #   Properties:
+  #     BrokerNodeGroupInfo:
+  #       ClientSubnets: 
+  #         - !FindInMap [ !Ref "Environment", Layer, SubnetId1 ]
+  #         - !FindInMap [ !Ref "Environment", Layer, SubnetId2 ]
+  #       InstanceType: kafka.m5.large
+  #       SecurityGroups:
+  #         - !FindInMap [ !Ref "Environment", Layer, SecurityGroupID ]
+  #       StorageInfo:
+  #         EBSStorageInfo:
+  #           VolumeSize: 300
+  #     ClusterName:
+  #       'Fn::Join':
+  #           - '-'
+  #           - - Ref: Environment
+  #             - elevaterewrite-kakfa
+  #     EncryptionInfo:
+  #       EncryptionInTransit:
+  #         ClientBroker: TLS
+  #         InCluster: true
+  #     EnhancedMonitoring: PER_TOPIC_PER_BROKER
+  #     KafkaVersion: 2.6.2
+  #     NumberOfBrokerNodes: 2
+  #     LoggingInfo:
+  #       BrokerLogs:
+  #         CloudWatchLogs:
+  #           Enabled: true
+  #           LogGroup: dev-Kakfa
+  #     Tags:
+  #       Environment: !Ref Environment
+  #       ResourceType: MSK-Cluster
+  #       CostCenter: 9038
+  #       Application: Elevate-Telematics
+  #       ITOwner: Sunil Gupta
+  #       Name:
+  #         'Fn::Join':
+  #                 - '-'
+  #                 - - Ref: Environment
+  #                   - MSK-telemetics
+  
+  #-----------------------------------------------------------------------------
+  # Template file of geofence activater creation of all services including Lambda
+  #-----------------------------------------------------------------------------
+  
+  GeofenceActivater:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: 
+        'Fn::Join':
+          - '-'
+          - - Ref: Environment
+            - telematics-geofenceActivator-lambda
+      Tags: 
+        - Key: "Environment"
+          Value: 
+            Ref: Environment         
+        - Key: "ResourceType"
+          Value: "Lambda"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics.geofenceActivator-lambda
+      TracingConfig:
+        Mode: Active
+      Handler: herc.telematics.geofence.activator.GeofenceActivator::handleRequest
+      Code:
+        S3Bucket: 
+          Ref: S3BucketName # dev.telematics.inartifacts
+        S3Key: 
+          Ref: S3BucketKey # lambda_function/mac-eligible-equipment-0.0.1-SNAPSHOT.jar
+      Environment:
+        Variables:
+          QUEUE_NAME: dev-telematics-internal-dispatcher-alert-message-queue
+          # ConnectionString: '{{resolve:secretsmanager:telematics/elevate:SecretString:qa}}'
+      Runtime: java11
+      Description: Java function
+      MemorySize: 512
+      Timeout: 300
+      VpcConfig:
+        SubnetIds:
+          - !FindInMap [ !Ref "Environment", Layer, SubnetId1 ]
+          - !FindInMap [ !Ref "Environment", Layer, SubnetId2 ]
+        SecurityGroupIds: 
+          - !FindInMap [ !Ref "Environment", Layer, SecurityGroupID ]
+      Role: !GetAtt GeofenceActivaterRole.Arn
+      #Role: !Sub arn:aws:iam::${AWS::AccountId}:role/telematics-geofenceactivatortest-Lambda
+
+  #-----------------------------------------------------------------------------
+  # This Lambda Function for Geofence Activater Log Grop
+  #-----------------------------------------------------------------------------
+  
+  GeofenceActivaterGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: GeofenceActivater
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${GeofenceActivater}"
+      RetentionInDays: 30
+  
+  #-----------------------------------------------------------------------------
+  # This Function for Integrating Lambda with MSK Cluster
+  #-----------------------------------------------------------------------------
+  
+  EventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: 'arn:aws:kafka:us-east-1:567234402044:cluster/qa-elevaterewrite-kakfa/d8e89e50-6d5c-4a52-8f8f-4628a5d0fbf9-20'
+      FunctionName: !Ref GeofenceActivater
+      StartingPosition : LATEST
+      Topics:
+        - dev.test
