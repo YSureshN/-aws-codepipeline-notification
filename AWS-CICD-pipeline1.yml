@@ -1,0 +1,1015 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The AWS CloudFormation template for CodeBuild and Codepipeline for maceligibleequipmentdetails
+Parameters:
+  Environment:
+    Description: 'Environment: dev,qa,stg,prod' 
+    Type: String
+    Default: 'qa'
+    AllowedValues:
+      - dev
+      - qa
+      - stg
+      - prod
+    ConstraintDescription: must be either 'dev','qa','stg' or 'prod'
+
+  CodeCommitRepoName:
+    Description: A CodeCommit repository that contains the application code. Must be in same region as this stack.
+    Type: String
+    Default: telematics.lambdafunctions
+
+  CPU:
+    Description: 'CPU unit for container'
+    Type: Number
+    Default: 512
+    AllowedValues:
+      - 256
+      - 512
+      - 1024
+      - 2048
+      - 4096
+    
+  Memory:
+    Description: 'Memory(MiB) unit for container'
+    Type: Number
+    Default: 512
+    AllowedValues:
+      - 512
+      - 1024
+      - 2048
+      - 3072
+      - 4096
+
+Mappings:
+  dev:
+    Layer:
+      "VpcId": "vpc-1081ac74"
+      "SubnetId1": "subnet-dd038785"
+      "SubnetId2": "subnet-bc28a093"
+      "SecurityGroupID": "sg-9bad17e3" # need to add sg-96aa31ee
+      "PubSubnetId1": "subnet-a04ee1f8"
+      "PubSubnetId2": "subnet-191faa33"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "7"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:dev}}"
+            
+  qa:
+    Layer:
+      "VpcId": "vpc-9ad5dafe"
+      "SubnetId1": "subnet-86e163de"
+      "SubnetId2": "subnet-b0813a9a"
+      "SecurityGroupID": "sg-9ecb8fe6"
+      "PubSubnetId1": "subnet-a6e062fe"
+      "PubSubnetId2": "subnet-2482390e"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "7"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:qa}}"
+
+  stg:
+    Layer:
+      "VpcId": "vpc-a29785c6"
+      "SubnetId1": "subnet-fdf1bdc0"
+      "SubnetId2": "subnet-f54d3383"
+      "SecurityGroupID": "sg-9bad17e3"
+      "PubSubnetId1": "subnet-024f3174"
+      "PubSubnetId2": "subnet-85f0bcb8"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "14"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:stg}}"
+
+  prod:
+    Layer:
+      "VpcId": "vpc-e8ece28c"
+      "SubnetId1": "subnet-ca7e0bbc"
+      "SubnetId2": "subnet-939d27b9"
+      "SecurityGroupID": "sg-9bad17e3"
+      "PubSubnetId1": "subnet-cb7e0bbd"
+      "PubSubnetId2": "subnet-0ece4356"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "30"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:prod}}"
+
+Conditions:
+  CreateProdResouces: !Or [!Equals [ !Ref Environment, prod ], !Equals [ !Ref Environment, stg ]]
+  CreateDevResouces: !Or [!Equals [ !Ref Environment, dev ], !Equals [ !Ref Environment, qa ]]
+
+Resources:
+  LambdaFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      RoleName: LambdaFunctionRole
+        # Fn::Join:
+        # - '-'
+        # - - Ref: Environment
+        #   - LambdaFunctionRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+      - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      - arn:aws:iam::567234402044:policy/LocationServices
+      - arn:aws:iam::567234402044:policy/SecretmanagerReadOnly
+
+      Policies:
+      - PolicyName: dynamodbaccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Sid: ListAndDescribe
+            Effect: Allow
+            Action:
+            - dynamodb:List*
+            - dynamodb:DescribeReservedCapacity*
+            - dynamodb:DescribeLimits
+            - dynamodb:DescribeTimeToLive
+            Resource: "*"
+          - Sid: SpecificTable
+            Effect: Allow
+            Action:
+            - dynamodb:BatchGet*
+            - dynamodb:DescribeStream
+            - dynamodb:DescribeTable
+            - dynamodb:Get*
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:BatchWrite*
+            - dynamodb:CreateTable
+            - dynamodb:Update*
+            - dynamodb:PutItem
+            Resource: "*"
+          - Action:
+            - dynamodb:*
+            - dax:*
+            - application-autoscaling:DeleteScalingPolicy
+            - application-autoscaling:DeregisterScalableTarget
+            - application-autoscaling:DescribeScalableTargets
+            - application-autoscaling:DescribeScalingActivities
+            - application-autoscaling:DescribeScalingPolicies
+            - application-autoscaling:PutScalingPolicy
+            - application-autoscaling:RegisterScalableTarget
+            - cloudwatch:DeleteAlarms
+            - cloudwatch:DescribeAlarmHistory
+            - cloudwatch:DescribeAlarms
+            - cloudwatch:DescribeAlarmsForMetric
+            - cloudwatch:GetMetricStatistics
+            - cloudwatch:ListMetrics
+            - cloudwatch:PutMetricAlarm
+            - cloudwatch:GetMetricData
+            - datapipeline:ActivatePipeline
+            - datapipeline:CreatePipeline
+            - datapipeline:DeletePipeline
+            - datapipeline:DescribeObjects
+            - datapipeline:DescribePipelines
+            - datapipeline:GetPipelineDefinition
+            - datapipeline:ListPipelines
+            - datapipeline:PutPipelineDefinition
+            - datapipeline:QueryObjects
+            - ec2:DescribeVpcs
+            - ec2:DescribeSubnets
+            - ec2:DescribeSecurityGroups
+            - iam:GetRole
+            - iam:ListRoles
+            - kms:DescribeKey
+            - kms:ListAliases
+            - sns:CreateTopic
+            - sns:DeleteTopic
+            - sns:ListSubscriptions
+            - sns:ListSubscriptionsByTopic
+            - sns:ListTopics
+            - sns:Subscribe
+            - sns:Unsubscribe
+            - sns:SetTopicAttributes
+            - lambda:CreateFunction
+            - lambda:ListFunctions
+            - lambda:ListEventSourceMappings
+            - lambda:CreateEventSourceMapping
+            - lambda:DeleteEventSourceMapping
+            - lambda:GetFunctionConfiguration
+            - lambda:DeleteFunction
+            - resource-groups:ListGroups
+            - resource-groups:ListGroupResources
+            - resource-groups:GetGroup
+            - resource-groups:GetGroupQuery
+            - resource-groups:DeleteGroup
+            - resource-groups:CreateGroup
+            - tag:GetResources
+            - kinesis:ListStreams
+            - kinesis:DescribeStream
+            - kinesis:DescribeStreamSummary
+            Effect: Allow
+            Resource: "*"
+          - Action: cloudwatch:GetInsightRuleReport
+            Effect: Allow
+            Resource: arn:aws:cloudwatch:*:*:insight-rule/DynamoDBContributorInsights*
+          - Action:
+            - iam:PassRole
+            Effect: Allow
+            Resource: "*"
+            Condition:
+              StringLike:
+                iam:PassedToService:
+                - application-autoscaling.amazonaws.com
+                - application-autoscaling.amazonaws.com.cn
+                - dax.amazonaws.com
+          - Effect: Allow
+            Action:
+            - iam:CreateServiceLinkedRole
+            Resource: "*"
+            Condition:
+              StringEquals:
+                iam:AWSServiceName:
+                - replication.dynamodb.amazonaws.com
+                - dax.amazonaws.com
+                - dynamodb.application-autoscaling.amazonaws.com
+                - contributorinsights.dynamodb.amazonaws.com
+                - kinesisreplication.dynamodb.amazonaws.com
+
+      - PolicyName: lambda-vpc
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - ec2:CreateNetworkInterface
+            - ec2:DescribeNetworkInterfaces
+            - ec2:DeleteNetworkInterface
+            - ec2:AssignPrivateIpAddresses
+            - ec2:UnassignPrivateIpAddresses
+            Resource: "*"
+
+      - PolicyName: sesaccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ses:*
+            Resource: "*"
+
+      - PolicyName: sqsaccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - sqs:*
+            Resource: "*"
+
+  telematicsmaceligibleequipmentdetailsCodePipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      Name: 
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-lambdadeploy
+      Tags: 
+        - Key: "Environment"
+          Value: 
+              Ref: Environment         
+        - Key: "ResourceType"
+          Value: "AWS CodePipeline"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics-lambdadeploy
+      #RoleArn: !GetAtt CodePipelineRole.Arn
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWS-CodePipeline-Service
+      ArtifactStore:
+        Location: codepipeline-us-east-1-33378181394     # should be made dynamic
+        Type: S3
+              
+      Stages:
+          - 
+            Name: Source
+            Actions:
+              -
+                Name: SourceAction
+                ActionTypeId:
+                  Category: Source 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CodeCommit
+                OutputArtifacts: 
+                  -
+                    Name: SourceArtifact 
+                Configuration:
+                  BranchName: feature-11369-maceligibleequipmentdetails
+                  RepositoryName: telematics.maceligibleequipmentdetails-lambda
+                  PollForSourceChanges: false
+                  OutputArtifactFormat: CODE_ZIP
+                Namespace: SourceVariables
+                RunOrder: 1
+                
+          - 
+            Name: Approval
+            Actions:
+              -
+                Name: Approval
+                RunOrder: 3
+                ActionTypeId:
+                  Category: Approval 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: Manual
+                Configuration:
+                  CustomData: "Requesting approval"
+
+          - 
+            Name: QaDeploy
+            Actions:
+              -
+                Name: QaDeploy
+                Region: us-east-1
+                RunOrder: 4
+                ActionTypeId:
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts: 
+                  -
+                    # Name: BuildArtifact
+                    Name: SourceArtifact
+                Namespace: DeployVariables
+                Configuration:
+                  ActionMode: CREATE_UPDATE
+                  StackName: 
+                    'Fn::Join':
+                      - '-'
+                      - - Ref: Environment
+                        - telematics-lambdastack
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_NAMED_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_continous_deployment
+                  #TemplatePath: BuildArtifact::packaged.yaml
+                  TemplatePath: SourceArtifact::template.yml
+                  
+          
+  telematicsbatchupdateequipcustomnameDeployCodePipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      Name: 
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-batchupdateequipcustomnameDeploy
+      Tags: 
+        - Key: "Environment"
+          Value: 
+              Ref: Environment         
+        - Key: "ResourceType"
+          Value: "AWS CodePipeline"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics-batchupdateequipcustomnameDeploy
+      # RoleArn: !GetAtt CodePipelineRole.Arn
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWS-CodePipeline-Service
+      ArtifactStore:
+        Location: codepipeline-us-east-1-33378181394
+        Type: S3
+              
+      Stages:
+          - 
+            Name: Source
+            Actions:
+              -
+                Name: SourceAction
+                ActionTypeId:
+                  Category: Source 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CodeCommit
+                OutputArtifacts: 
+                  -
+                    Name: SourceArtifact 
+                Configuration:
+                  BranchName: feature-11369-templateupdate
+                  RepositoryName: telematics.batchupdate-equipmentcustomname-lambda
+                  PollForSourceChanges: false
+                  OutputArtifactFormat: CODE_ZIP
+                Namespace: SourceVariables
+                RunOrder: 1
+                
+          
+          - 
+            Name: Approval
+            Actions:
+              -
+                Name: Approval
+                RunOrder: 3
+                ActionTypeId:
+                  Category: Approval 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: Manual
+                Configuration:
+                  CustomData: "Requesting approval"
+
+          - 
+            Name: QaDeploy
+            Actions:
+              -
+                Name: QaDeploy
+                Region: us-east-1
+                RunOrder: 4
+                ActionTypeId:
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts: 
+                  -
+                    #Name: BuildArtifact
+                    Name: SourceArtifact
+                Namespace: DeployVariables
+                Configuration:
+                  ActionMode: CREATE_UPDATE
+                  StackName: 
+                    'Fn::Join':
+                      - '-'
+                      - - Ref: Environment
+                        - telematics-lambdastack-batchupdatecustom
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_NAMED_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_continous_deployment
+                  #TemplatePath: BuildArtifact::packaged.yaml
+                  TemplatePath: SourceArtifact::template.yml
+
+  telematicsgeofenceactivatorLambdaDeployCodePipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      Name: 
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofenceactivatorLambdaDeploy
+      Tags: 
+        - Key: "Environment"
+          Value: 
+              Ref: Environment         
+        - Key: "ResourceType"
+          Value: "AWS CodePipeline"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics-geofenceactivatorLambdaDeploy
+      # RoleArn: !GetAtt CodePipelineRole.Arn
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWS-CodePipeline-Service
+      # RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWSCodePipelineServiceRole-us-east-1-dev-telematics-modifyequip
+      ArtifactStore:
+        Location: codepipeline-us-east-1-33378181394
+        Type: S3
+              
+      Stages:
+          - 
+            Name: Source
+            Actions:
+              -
+                Name: SourceAction
+                ActionTypeId:
+                  Category: Source 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CodeCommit
+                OutputArtifacts: 
+                  -
+                    Name: SourceArtifact 
+                Configuration:
+                  BranchName: feature/equipment-assignment-event
+                  RepositoryName: telematics.geofenceActivator-lambda
+                  PollForSourceChanges: false
+                  OutputArtifactFormat: CODE_ZIP
+                Namespace: SourceVariables
+                RunOrder: 1
+
+          - 
+            Name: QaDeploy
+            Actions:
+              -
+                Name: QaDeploy
+                Region: us-east-1
+                RunOrder: 4
+                ActionTypeId:
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts: 
+                  -
+                    #Name: BuildArtifact
+                    Name: SourceArtifact
+                Namespace: DeployVariables
+                Configuration:
+                  ActionMode: CREATE_UPDATE
+                  StackName: 
+                    'Fn::Join':
+                      - '-'
+                      - - Ref: Environment
+                        - telematics-lambdastack-geofenceActivator
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_NAMED_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_continous_deployment
+                  #TemplatePath: BuildArtifact::packaged.yaml
+                  TemplatePath: SourceArtifact::template.yml
+                
+         
+
+  telematicsgeofencedispatcherLambdaDeployCodePipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      Name: 
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofencedispatcherLambdaDeploy
+      Tags: 
+        - Key: "Environment"
+          Value: 
+              Ref: Environment         
+        - Key: "ResourceType"
+          Value: "AWS CodePipeline"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics-geofencedispatcherLambdaDeploy
+      #RoleArn: !GetAtt CodePipelineRole.Arn
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWS-CodePipeline-Service
+      # RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWSCodePipelineServiceRole-us-east-1-dev-telematics-modifyequip
+      ArtifactStore:
+        Location: codepipeline-us-east-1-33378181394
+        Type: S3
+              
+      Stages:
+          - 
+            Name: Source
+            Actions:
+              -
+                Name: SourceAction
+                ActionTypeId:
+                  Category: Source 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CodeCommit
+                OutputArtifacts: 
+                  -
+                    Name: SourceArtifact 
+                Configuration:
+                  BranchName: feature/HERC-7334-geofence-dispatcher-utility
+                  RepositoryName: telematics.geofenceDispatcher-lambda
+                  PollForSourceChanges: false
+                  OutputArtifactFormat: CODE_ZIP
+                Namespace: SourceVariables
+                RunOrder: 1
+
+          - 
+            Name: QaDeploy
+            Actions:
+              -
+                Name: QaDeploy
+                Region: us-east-1
+                RunOrder: 4
+                ActionTypeId:
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts: 
+                  -
+                    #Name: BuildArtifact
+                    Name: SourceArtifact
+                Namespace: DeployVariables
+                Configuration:
+                  ActionMode: CREATE_UPDATE
+                  StackName: 
+                    'Fn::Join':
+                      - '-'
+                      - - Ref: Environment
+                        - telematics-lambdastack-geofencedispatcher
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_NAMED_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_continous_deployment
+                  #TemplatePath: BuildArtifact::packaged.yaml
+                  TemplatePath: SourceArtifact::template.yml
+                
+         
+  telematicsviewequipcustomnameDeployCodePipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      Name: 
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-viewequipcustomnameDeploy
+      Tags: 
+        - Key: "Environment"
+          Value: 
+              Ref: Environment         
+        - Key: "ResourceType"
+          Value: "AWS CodePipeline"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics-viewequipcustomnameDeploy
+      #RoleArn: !GetAtt CodePipelineRole.Arn
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWS-CodePipeline-Service
+      ArtifactStore:
+        Location: codepipeline-us-east-1-33378181394     # should be made dynamic
+        Type: S3
+              
+      Stages:
+          - 
+            Name: Source
+            Actions:
+              -
+                Name: SourceAction
+                ActionTypeId:
+                  Category: Source 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CodeCommit
+                OutputArtifacts: 
+                  -
+                    Name: SourceArtifact 
+                Configuration:
+                  BranchName: feature-11369-templateupdate
+                  RepositoryName: telematics.macequipmentdetails-lambda
+                  PollForSourceChanges: false
+                  OutputArtifactFormat: CODE_ZIP
+                Namespace: SourceVariables
+                RunOrder: 1
+                
+          
+
+          - 
+            Name: Approval
+            Actions:
+              -
+                Name: Approval
+                RunOrder: 3
+                ActionTypeId:
+                  Category: Approval 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: Manual
+                Configuration:
+                  CustomData: "Requesting approval"
+
+          - 
+            Name: QaDeploy
+            Actions:
+              -
+                Name: QaDeploy
+                Region: us-east-1
+                RunOrder: 4
+                ActionTypeId:
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts: 
+                  -
+                    #Name: BuildArtifact
+                    Name: SourceArtifact
+                Namespace: DeployVariables
+                Configuration:
+                  ActionMode: CREATE_UPDATE
+                  StackName: 
+                    'Fn::Join':
+                      - '-'
+                      - - Ref: Environment
+                        - telematics-lambdastack-vcustom
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_NAMED_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_continous_deployment
+                  #TemplatePath: BuildArtifact::packaged.yaml
+                  TemplatePath: SourceArtifact::template.yml
+
+  telematicsmodifyequipcustomnameDeployCodePipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      Name: 
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-modifyequipcustomnameDeploy
+      Tags: 
+        - Key: "Environment"
+          Value: 
+              Ref: Environment         
+        - Key: "ResourceType"
+          Value: "AWS CodePipeline"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics-modifyequipcustomnameDeploy
+      #RoleArn: !GetAtt CodePipelineRole.Arn
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWS-CodePipeline-Service
+      # RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWSCodePipelineServiceRole-us-east-1-dev-telematics-modifyequip
+      ArtifactStore:
+        Location: codepipeline-us-east-1-33378181394
+        Type: S3
+              
+      Stages:
+          - 
+            Name: Source
+            Actions:
+              -
+                Name: SourceAction
+                ActionTypeId:
+                  Category: Source 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CodeCommit
+                OutputArtifacts: 
+                  -
+                    Name: SourceArtifact 
+                Configuration:
+                  BranchName: feature-11369-templateupdate
+                  RepositoryName: telematics.modify-custom-name-lambda
+                  PollForSourceChanges: false
+                  OutputArtifactFormat: CODE_ZIP
+                Namespace: SourceVariables
+                RunOrder: 1
+                
+         
+          - 
+            Name: Approval
+            Actions:
+              -
+                Name: Approval
+                RunOrder: 3
+                ActionTypeId:
+                  Category: Approval 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: Manual
+                Configuration:
+                  CustomData: "Requesting approval"
+
+          - 
+            Name: QaDeploy
+            Actions:
+              -
+                Name: QaDeploy
+                Region: us-east-1
+                RunOrder: 4
+                ActionTypeId:
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts: 
+                  -
+                    #Name: BuildArtifact
+                    Name: SourceArtifact
+                Namespace: DeployVariables
+                Configuration:
+                  ActionMode: CREATE_UPDATE
+                  StackName: 
+                    'Fn::Join':
+                      - '-'
+                      - - Ref: Environment
+                        - telematics-lambdastack-mcustom
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_NAMED_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_continous_deployment
+                  #TemplatePath: BuildArtifact::packaged.yaml
+                  TemplatePath: SourceArtifact::template.yml
+
+  telematicssaveequipcustomnameDeployCodePipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      Name: 
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-saveequipcustomnameDeploy
+      Tags: 
+        - Key: "Environment"
+          Value: 
+              Ref: Environment         
+        - Key: "ResourceType"
+          Value: "AWS CodePipeline"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics-saveequipcustomnameDeploy
+      #RoleArn: !GetAtt CodePipelineRole.Arn
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWS-CodePipeline-Service
+      # RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWSCodePipelineServiceRole-us-east-1-dev-telematics-saveequipcu
+      ArtifactStore:
+        Location: codepipeline-us-east-1-33378181394
+        Type: S3
+              
+      Stages:
+          - 
+            Name: Source
+            Actions:
+              -
+                Name: SourceAction
+                ActionTypeId:
+                  Category: Source 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CodeCommit
+                OutputArtifacts: 
+                  -
+                    Name: SourceArtifact 
+                Configuration:
+                  BranchName: feature-11369-templateupdate
+                  RepositoryName: telematics.save-custom-name-lambda
+                  PollForSourceChanges: false
+                  OutputArtifactFormat: CODE_ZIP
+                Namespace: SourceVariables
+                RunOrder: 1
+          
+
+          - 
+            Name: Approval
+            Actions:
+              -
+                Name: Approval
+                RunOrder: 3
+                ActionTypeId:
+                  Category: Approval 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: Manual
+                Configuration:
+                  CustomData: "Requesting approval"
+
+          - 
+            Name: QaDeploy
+            Actions:
+              -
+                Name: QaDeploy
+                Region: us-east-1
+                RunOrder: 4
+                ActionTypeId:
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts: 
+                  -
+                    #Name: BuildArtifact
+                    Name: SourceArtifact
+                Namespace: DeployVariables
+                Configuration:
+                  ActionMode: CREATE_UPDATE
+                  StackName: 
+                    'Fn::Join':
+                      - '-'
+                      - - Ref: Environment
+                        - telematics-lambdastack-scustom
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_NAMED_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_continous_deployment
+                  #TemplatePath: BuildArtifact::packaged.yaml
+                  TemplatePath: SourceArtifact::template.yml
+
+  telematicssaveequipmentnameDeployCodePipeline:
+    Type: "AWS::CodePipeline::Pipeline"
+    Properties:
+      Name: 
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-saveequipmentnameDeploy
+      Tags: 
+        - Key: "Environment"
+          Value: 
+              Ref: Environment         
+        - Key: "ResourceType"
+          Value: "AWS CodePipeline"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+              - '-'
+              - - Ref: Environment
+                - telematics-saveequipmentnameDeploy
+      #RoleArn: !GetAtt CodePipelineRole.Arn
+      RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/AWS-CodePipeline-Service
+      ArtifactStore:
+        Location: codepipeline-us-east-1-33378181394     # should be made dynamic
+        Type: S3
+              
+      Stages:
+          - 
+            Name: Source
+            Actions:
+              -
+                Name: SourceAction
+                ActionTypeId:
+                  Category: Source 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CodeCommit
+                OutputArtifacts: 
+                  -
+                    Name: SourceArtifact 
+                Configuration:
+                  BranchName: feature-11369-templateupdate
+                  RepositoryName: telematics.save-equipment-name-lambda
+                  PollForSourceChanges: false
+                  OutputArtifactFormat: CODE_ZIP
+                Namespace: SourceVariables
+                RunOrder: 1
+       
+          - 
+            Name: Approval
+            Actions:
+              -
+                Name: Approval
+                RunOrder: 3
+                ActionTypeId:
+                  Category: Approval 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: Manual
+                Configuration:
+                  CustomData: "Requesting approval"
+
+          - 
+            Name: QaDeploy
+            Actions:
+              -
+                Name: QaDeploy
+                Region: us-east-1
+                RunOrder: 4
+                ActionTypeId:
+                  Category: Deploy 
+                  Owner: AWS 
+                  Version: 1 
+                  Provider: CloudFormation
+                InputArtifacts: 
+                  -
+                    #Name: BuildArtifact
+                    Name: SourceArtifact
+                Namespace: DeployVariables
+                Configuration:
+                  ActionMode: CREATE_UPDATE
+                  StackName: 
+                    'Fn::Join':
+                      - '-'
+                      - - Ref: Environment
+                        - telematics-lambdastack-saveequipmentname
+                  Capabilities: CAPABILITY_AUTO_EXPAND,CAPABILITY_NAMED_IAM
+                  RoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/lambda_continous_deployment
+                  #TemplatePath: BuildArtifact::packaged.yaml
+                  TemplatePath: SourceArtifact::template.yml
