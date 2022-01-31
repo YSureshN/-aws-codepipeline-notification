@@ -1,0 +1,616 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'This AWS CloudFormation Template is for TrackUnit Ingestion for Telematics Project'
+Parameters:
+  Environment:
+    Description: 'Environment: dev,qa,stg,prod' 
+    Type: String
+    Default: 'qa'
+    AllowedValues:
+      - dev
+      - qa
+      - stg
+      - prod
+    ConstraintDescription: must be either 'dev','qa','stg' or 'prod'
+
+Mappings:
+  dev:
+    Layer:
+      "VpcId": "vpc-1081ac74"
+      "SubnetId1": "subnet-dd038785"
+      "SubnetId2": "subnet-bc28a093"
+      "SecurityGroupID": "sg-9bad17e3" 
+      "PubSubnetId1": "subnet-a04ee1f8"
+      "PubSubnetId2": "subnet-191faa33"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "7"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:dev}}"
+            
+  qa:
+    Layer:
+      "VpcId": "vpc-9ad5dafe"
+      "SubnetId1": "subnet-86e163de"
+      "SubnetId2": "subnet-b0813a9a"
+      "SecurityGroupID": "sg-9ecb8fe6"
+      "PubSubnetId1": "subnet-a6e062fe"
+      "PubSubnetId2": "subnet-2482390e"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "7"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:qa}}"
+
+  stg:
+    Layer:
+      "VpcId": "vpc-a29785c6"
+      "SubnetId1": "subnet-fdf1bdc0"
+      "SubnetId2": "subnet-f54d3383"
+      "SecurityGroupID": "sg-9bad17e3"
+      "PubSubnetId1": "subnet-024f3174"
+      "PubSubnetId2": "subnet-85f0bcb8"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "14"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:stg}}"
+
+  prod:
+    Layer:
+      "VpcId": "vpc-e8ece28c"
+      "SubnetId1": "subnet-ca7e0bbc"
+      "SubnetId2": "subnet-939d27b9"
+      "SecurityGroupID": "sg-9bad17e3"
+      "PubSubnetId1": "subnet-cb7e0bbd"
+      "PubSubnetId2": "subnet-0ece4356"
+      "RawDataS3Bucket": "dev.telematics.inartifacts"
+      "ProcessedDataS3Bucket": "dev.telematics.outartifacts"
+      "RetentionInDays": "30"
+      "ConnectionString": "{{resolve:secretsmanager:telematics/elevate:SecretString:prod}}"
+
+
+Resources:     
+  KinesisRawDataStream:
+    Type: 'AWS::Kinesis::Stream'
+    Properties:
+      Name:
+        'Fn::Join':
+          - '-'
+          - - Ref: Environment
+            - telemetry-raw-data-stream                    
+      RetentionPeriodHours: 24
+      ShardCount: 1
+      Tags: 
+        - Key: "Environment"
+          Value: 
+            Ref: Environment         
+        - Key: "ResourceType"
+          Value: "Kinesis Data Stream"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "Application"
+          Value: "Elevate-Telematics"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+                - '-'
+                - - Ref: Environment
+                  - telemetry-raw-data-stream   
+  KinesisProcessedDataStream:
+    Type: 'AWS::Kinesis::Stream'
+    Properties:
+      Name:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telemetry-processed-data-stream
+      RetentionPeriodHours: 24
+      ShardCount: 1
+      Tags: 
+        - Key: "Environment"
+          Value: 
+            Ref: Environment         
+        - Key: "ResourceType"
+          Value: "Kinesis Data Stream"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "Application"
+          Value: "Elevate-Telematics"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+                - '-'
+                - - Ref: Environment
+                  - telemetry-processed-data-stream 
+  KinesisProcessedDataDeliveryStream:
+    Type: 'AWS::KinesisFirehose::DeliveryStream'
+    Properties:
+      DeliveryStreamName: 
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telemetry-processed-data-delivery-stream
+      DeliveryStreamType: KinesisStreamAsSource
+      KinesisStreamSourceConfiguration:
+        KinesisStreamARN: 
+          'Fn::GetAtt':
+            - KinesisProcessedDataStream
+            - Arn
+        RoleARN:
+          'Fn::GetAtt':
+            - KinesisProcessedDataDeliveryStreamIAMRole
+            - Arn
+      S3DestinationConfiguration:
+        BucketARN: 'arn:aws:s3:::dev.telematics.outartifacts'
+        RoleARN:
+          'Fn::GetAtt':
+            - KinesisProcessedDataDeliveryStreamIAMRole
+            - Arn
+      Tags: 
+        - Key: "Environment"
+          Value: 
+            Ref: Environment         
+        - Key: "ResourceType"
+          Value: "Kinesis Delivery Stream"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "Application"
+          Value: "Elevate-Telematics"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+                - '-'
+                - - Ref: Environment
+                  - telemetry-processed-data-stream
+    DependsOn:
+      - KinesisProcessedDataStream
+      - KinesisProcessedDataDeliveryStreamIAMPolicy
+  KinesisRawDataDeliveryStream:
+    Type: 'AWS::KinesisFirehose::DeliveryStream'
+    Properties:
+      DeliveryStreamName: 
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telemetry-raw-data-delivery-stream
+      DeliveryStreamType: KinesisStreamAsSource
+      KinesisStreamSourceConfiguration:
+        KinesisStreamARN: 
+          'Fn::GetAtt':
+            - KinesisRawDataStream
+            - Arn
+        RoleARN:
+          'Fn::GetAtt':
+            - KinesisRawDataDeliveryStreamIAMRole
+            - Arn
+      S3DestinationConfiguration:
+          BucketARN: 'arn:aws:s3:::dev.telematics.inartifacts'
+          RoleARN:
+            'Fn::GetAtt':
+              - KinesisProcessedDataDeliveryStreamIAMRole
+              - Arn
+      Tags: 
+        - Key: "Environment"
+          Value: 
+            Ref: Environment         
+        - Key: "ResourceType"
+          Value: "Kinesis Delivery Stream"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "Application"
+          Value: "Elevate-Telematics"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+                - '-'
+                - - Ref: Environment
+                  - telemetry-raw-data-stream
+    DependsOn:
+      - KinesisRawDataStream 
+      - KinesisRawDataDeliveryStreamIAMPolicy
+  KinesisRawDataDeliveryStreamIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'KinesisRawRole'
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref AWS::AccountId
+  KinesisRawDataDeliveryStreamIAMPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName:  
+        'Fn::Join':
+          - '-'
+          - - Ref: Environment
+            - firehose-delivery-policy                     
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:GetBucketLocation'
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:PutObject'
+              - 'iam:PassRole'
+            Resource:
+              - 'arn:aws:s3:::dev.telematics.inartifacts/*'
+              - 'arn:aws:iam::*:role/firehose_s3'
+          - Effect: Allow
+            Action:
+              - 'kinesis:DescribeStream'
+              - 'kinesis:GetShardIterator'
+              - 'kinesis:GetRecords'
+            Resource:
+              'Fn::GetAtt':
+                - KinesisRawDataStream
+                - Arn
+      Roles:
+        - Ref: KinesisRawDataDeliveryStreamIAMRole
+    DependsOn:
+      - KinesisRawDataStream
+  KinesisProcessedDataDeliveryStreamIAMRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: 'KinesisDeliveryRole'
+            Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: 'sts:AssumeRole'
+            Condition:
+              StringEquals:
+                'sts:ExternalId': !Ref AWS::AccountId
+  KinesisProcessedDataDeliveryStreamIAMPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName:  
+        'Fn::Join':
+          - '-'
+          - - Ref: Environment
+            - firehose-delivery-policy                     
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:GetBucketLocation'
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:PutObject'
+              - 'iam:PassRole'
+            Resource:
+              - 'arn:aws:s3:::dev.telematics.outartifacts/*'
+              - 'arn:aws:iam::*:role/firehose_s3'
+          - Effect: Allow
+            Action:
+              - 'kinesis:DescribeStream'
+              - 'kinesis:GetShardIterator'
+              - 'kinesis:GetRecords'
+            Resource:
+              'Fn::GetAtt':
+                - KinesisProcessedDataStream
+                - Arn
+      Roles:
+        - Ref: KinesisProcessedDataDeliveryStreamIAMRole
+    DependsOn:
+      - KinesisProcessedDataStream
+  
+  ElastiCache:
+    Type: "AWS::ElastiCache::CacheCluster"
+    Properties:
+      NumCacheNodes: 1
+      Port: 6379
+      ClusterName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-elasticcache
+      CacheNodeType: "cache.r6g.large"
+      CacheParameterGroupName: "default.redis6.x"
+      CacheSubnetGroupName: "cache-data-subnet-qa"
+      Engine: "redis"
+      EngineVersion: "6.2"
+      VpcSecurityGroupIds: 
+        - !FindInMap [ !Ref "Environment", Layer, SecurityGroupID ]
+      # DependsOn:
+      #   - TrackUnitProcessorFunction
+    
+  SQS:
+    Type: AWS::SQS::Queue
+    Properties: 
+      QueueName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - elevate-trackunit-queue   
+      Tags: 
+        - Key: "Environment"
+          Value: 
+            Ref: Environment         
+        - Key: "ResourceType"
+          Value: "SQS"
+        - Key: "CostCenter"
+          Value: "9038"
+        - Key: "Application"
+          Value: "Elevate-Telematics"
+        - Key: "ITOwner"
+          Value: "Sunil Gupta"
+        - Key: "Name"
+          Value: 
+            'Fn::Join':
+                - '-'
+                - - Ref: Environment
+                  - telemetry-raw-data-stream
+      VisibilityTimeout: 30
+    DependsOn:
+      - KineissAnalyticsStreamingApplication
+
+  KineissAnalyticsStreamingApplication:
+    Type: AWS::KinesisAnalyticsV2::Application
+    Properties:
+      RuntimeEnvironment: FLINK-1_11
+      # ServiceExecutionRole:
+      #   Ref: KinesisAnalyticsTimestreamRole
+      ServiceExecutionRole: !GetAtt KinesisAnalyticsTimestreamRole.Arn
+      ApplicationConfiguration:
+        ApplicationCodeConfiguration:
+          CodeContent:
+            S3ContentLocation:
+              BucketARN: "arn:aws:s3:::dev.elevateteledata"
+              FileKey: kinesis-to-timestream-16.0.jar
+          CodeContentType: 'ZIPFILE'
+
+  KinesisFirehoseS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: kinesisanalytics.amazonaws.com
+            Action: 'sts:AssumeRole'
+      RoleName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - firehose_s3
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  KinesisFirehoseAccesstoAmazonS3DestinationInlinePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - KinesisFirehoseAccesstoAmazonS3Destination
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:GetBucketLocation'
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:PutObject'
+            Resource:
+              - 'arn:aws:s3:::dev.elevateteledata'
+              - 'arn:aws:s3:::dev.elevateteledata/*'
+          - Effect: Allow
+            Action:
+              - 'kinesis:DescribeStream'
+              - 'kinesis:GetShardIterator'
+              - 'kinesis:GetRecords'
+              - 'kinesis:ListShards'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'iam:PassRole'
+            Resource: '*'
+      Roles: 
+        - !Ref KinesisFirehoseS3Role
+
+  KinesisAnalyticsS3Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: kinesisanalytics.amazonaws.com
+            Action: 'sts:AssumeRole'
+      RoleName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - KinesisAnalyticsS3Role
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+
+  kinesisAnalyticsSqsInlinePolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'sqs:*'
+            Resource: '*'
+      PolicyName:
+        'Fn::Join':
+          - '-'
+          - - Ref: Environment
+            - kinesisanalytics_sqs 
+      Roles: 
+        - !Ref KinesisAnalyticsS3Role
+
+  KinesisAnalyticsTimestreamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: kinesisanalytics.amazonaws.com
+            Action: 'sts:AssumeRole'
+      RoleName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - kinesisanalytics_timestream
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+        - arn:aws:iam::aws:policy/AmazonVPCFullAccess
+        - arn:aws:iam::aws:policy/AmazonTimestreamFullAccess
+  KinesistoS3InlinePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName:
+        Fn::Join:
+          - '-'
+          - - Ref: Environment
+            - kinesistos3
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:GetBucketLocation'
+              - 's3:GetObject'
+              - 's3:ListBucket'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:PutObject'
+            Resource:
+              - 'arn:aws:s3:::dev.elevateteledata'
+              - 'arn:aws:s3:::dev.elevateteledata/*'
+          - Effect: Allow
+            Action:
+              - 'kinesisanalytics:*'
+              - 'kinesisvideo:*'
+              - 'iam:ListPolicyVersions'
+              - 'cloudwatch:*'
+              - 'firehose:*'
+              - 'logs:*'
+              - 'firehose:ListDeliveryStreams'
+              - 'iam:ListRoles'
+              - 'kinesis:*'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'iam:PassRole'
+            Resource: 'arn:aws:iam::567234402044:role/firehose_s3'
+          - Effect: Allow
+            Action: 'iam:PassRole'
+            Resource: '*'         
+      Roles: 
+        - !Ref KinesisAnalyticsTimestreamRole
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+              - sts:AssumeRole
+      RoleName:
+        Fn::Join:
+        - '-'
+        - - Ref: Environment
+          - lambda_Kinesis
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
+      - arn:aws:iam::aws:policy/AmazonRDSDataFullAccess
+      - arn:aws:iam::aws:policy/AmazonSQSFullAccess
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+  # TrackUnitProcessorFunction:
+  #   Type: AWS::Lambda::Function
+  #   Properties:
+  #     FunctionName:
+  #       Fn::Join:
+  #       - '-'
+  #       - - Ref: Environment
+  #         - Trackunit-processor
+  #     #CodeUri: src/RDSGlobalCluster/bin/Release/netcoreapp3.1/publish
+  #     Handler: HERC.Telematics.TrackUnit.Processor::HERC.Telematics.TrackUnit.Processor.TrackUnitProcessor::FunctionHandler
+  #     Code:
+  #       S3Bucket: 
+  #         Ref: S3BucketName 
+  #       S3Key: 
+  #         Ref: S3BucketKey 
+  #     Runtime: dotnetcore3.1
+  #     Policies:
+  #       - AWSSecretsManager
+  #       - Version: 2012-10-17
+  #         Statement:
+  #           - Effect: Allow
+  #             Action:
+  #               - 'secretsmanager:GetSecretValue'
+  #               - 'secretsmanager:PutResourcePolicy'
+  #               - 'secretsmanager:PutSecretValue'
+  #               - 'secretsmanager:DeleteSecret'
+  #               - 'secretsmanager:DescribeSecret'
+  #               - 'secretsmanager:TagResource'
+  #             Resource: 'arn:aws:secretsmanager:*:*:secret:rds-db-credentials/*'
+  #           - Effect: Allow
+  #             Action:
+  #               - 'secretsmanager:CreateSecret'
+  #               - 'secretsmanager:ListSecrets'
+  #               - 'secretsmanager:GetRandomPassword'
+  #             Resource:
+  #               - '*'
+  #         Timeout: 15
+  #         MemorySize: 512
+  #     Tags:
+  #         - Key: "Environment"
+  #           Value: 
+  #             Ref: Environment         
+  #         - Key: "ResourceType"
+  #           Value: "LambdaFunction"
+  #         - Key: "CostCenter"
+  #           Value: "9038"
+  #         - Key: "Application"
+  #           Value: "Elevate-Telematics"
+  #         - Key: "ITOwner"
+  #           Value: "Sunil Gupta"
+  #         - Key: "Name"
+  #           Value: 
+  #             'Fn::Join':
+  #               - '-'
+  #               - - Ref: Environment
+  #                 - Trackunit-Processor
