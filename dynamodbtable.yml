@@ -1,0 +1,272 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: "DynamoDB Global Table Lambda Utility"
+
+# Organizes How the Parameters appear in the CloudFormation Interface
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Lambda Utility Parameters'
+      Parameters:
+      - DynamoDBTableName
+      - DynamoDBTableExists
+      - ReplicationGroupList
+      - LogLevel
+
+Parameters:
+  DynamoDBTableName:
+    Description: 'Name to use when creating the DynamoDB table'
+    Type: String
+    Default: 'TestTable'
+    AllowedPattern: '[a-zA-Z0-9_.-]+'
+    MaxLength: 255
+    MinLength: 3
+  DynamoDBTableExists:
+    Description: 'The DynamoDB table already exists, and cannot be created as a resource. (Must match the name in the previous parameter)'
+    Type: String
+    Default: false
+    AllowedValues: [true, false]
+  ReplicationGroupList:
+    Description: 'Comma delimited list of regions to included in the replication group (currently limited to: us-east-1,us-east-2,us-west-2,eu-west-1,eu-central-1,ap-southeast-1,ap-southeast-2,ap-northeast-1,ap-northeast-2)'
+    Type: CommaDelimitedList
+    Default: 'us-east-1,us-west-2'
+  LogLevel:
+    Description: 'Log Level for the DynamoDB Global Table creation Custom Resource'
+    Type: String
+    Default: 'WARNING'
+    AllowedValues: [ 'DEBUG', 'INFO', 'WARNING', 'ERROR' ]
+
+# Conditions:
+#   CreateDynamoDBResource: !Equals [ !Ref DynamoDBTableExists, 'false' ]
+
+Resources:
+  # DDBTable:
+  #   Type: AWS::DynamoDB::Table
+  #   Properties:
+  #     AttributeDefinitions:
+  #       -
+  #         AttributeName: "ArtistId"
+  #         AttributeType: "S"
+  #       -
+  #         AttributeName: "Concert"
+  #         AttributeType: "S"
+  #       -
+  #         AttributeName: "TicketSales"
+  #         AttributeType: "S"
+  #     KeySchema:
+  #       -
+  #         AttributeName: "ArtistId"
+  #         KeyType: "HASH"
+  #       -
+  #         AttributeName: "Concert"
+  #         KeyType: "RANGE"
+  #     GlobalSecondaryIndexes:
+  #       -
+  #         IndexName: "GSI"
+  #         KeySchema:
+  #           -
+  #             AttributeName: "TicketSales"
+  #             KeyType: "HASH"
+  #         Projection:
+  #           ProjectionType: "KEYS_ONLY"
+  #         ProvisionedThroughput:
+  #           ReadCapacityUnits: 5
+  #           WriteCapacityUnits: 5
+  #     ProvisionedThroughput:
+  #       ReadCapacityUnits: 5
+  #       WriteCapacityUnits: 5
+  #     StreamSpecification:
+  #       StreamViewType: NEW_AND_OLD_IMAGES
+  #     PointInTimeRecoverySpecification:
+  #       PointInTimeRecoveryEnabled: true
+
+  # WriteCapacityScalableTarget:
+  #   Type: AWS::ApplicationAutoScaling::ScalableTarget
+  #   Properties:
+  #     MaxCapacity: 15
+  #     MinCapacity: 5
+  #     ResourceId: !Join
+  #       - /
+  #       - - table
+  #         - !Ref DDBTable
+  #     RoleARN: !GetAtt ScalingRole.Arn
+  #     ScalableDimension: dynamodb:table:WriteCapacityUnits
+  #     ServiceNamespace: dynamodb
+  # ScalingRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         -
+  #           Effect: "Allow"
+  #           Principal:
+  #             Service:
+  #               - application-autoscaling.amazonaws.com
+  #           Action:
+  #             - "sts:AssumeRole"
+  #     Path: "/"
+  #     Policies:
+  #       -
+  #         PolicyName: "root"
+  #         PolicyDocument:
+  #           Version: "2012-10-17"
+  #           Statement:
+  #             -
+  #               Effect: "Allow"
+  #               Action:
+  #                 - "dynamodb:DescribeTable"
+  #                 - "dynamodb:UpdateTable"
+  #                 - "cloudwatch:PutMetricAlarm"
+  #                 - "cloudwatch:DescribeAlarms"
+  #                 - "cloudwatch:GetMetricStatistics"
+  #                 - "cloudwatch:SetAlarmState"
+  #                 - "cloudwatch:DeleteAlarms"
+  #               Resource: "*"
+  # WriteScalingPolicy:
+  #   Type: AWS::ApplicationAutoScaling::ScalingPolicy
+  #   Properties:
+  #     PolicyName: WriteAutoScalingPolicy
+  #     PolicyType: TargetTrackingScaling
+  #     ScalingTargetId: !Ref WriteCapacityScalableTarget
+  #     TargetTrackingScalingPolicyConfiguration:
+  #       TargetValue: 50.0
+  #       ScaleInCooldown: 60
+  #       ScaleOutCooldown: 60
+  #       PredefinedMetricSpecification:
+  #         PredefinedMetricType: DynamoDBWriteCapacityUtilization
+
+  #-----------------------------------------------------------------------------
+  # This function for DynamoDB Creating with AutoScaling based on 70%
+  #-----------------------------------------------------------------------------
+  
+  Telematicsgeofence:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+          - AttributeName: geofenceId
+            AttributeType: S
+          - AttributeName: TimeStamp
+            AttributeType: S
+        
+      KeySchema:
+          - AttributeName: geofenceId
+            KeyType: HASH
+          - AttributeName: TimeStamp
+            KeyType: RANGE
+      
+      TableName: telematicsgeofence
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      
+      Tags:
+        - Key: Name
+          Value: suresh
+        - Key: Project
+          Value: ApplicationName
+        - Key: Owner
+          Value: Sunil Gupta
+        - Key: Environment
+          Value: EnvType
+        - Key: Application
+          Value: ApplicationName
+
+  UserTableWriteCapacityScalableTarget: 
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    Properties: 
+      MaxCapacity: 10
+      MinCapacity: 1
+      ResourceId: !Join
+            - /
+            - - table
+              - !Ref Telematicsgeofence
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+      ScalableDimension: "dynamodb:table:WriteCapacityUnits"
+      ServiceNamespace: dynamodb
+    DependsOn: Telematicsgeofence
+  
+  UserTableWriteScalingPolicy: 
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    Properties: 
+      PolicyName: WriteAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: 
+        Ref: UserTableWriteCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration: 
+        TargetValue: 70
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+  
+  UserTableReadCapacityScalableTarget: 
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    Properties: 
+      MaxCapacity: 10
+      MinCapacity: 1
+      ResourceId: !Join
+        - /
+        - - table
+          - !Ref Telematicsgeofence
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/dynamodb.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_DynamoDBTable
+      ScalableDimension: "dynamodb:table:ReadCapacityUnits"
+      ServiceNamespace: dynamodb
+    DependsOn: Telematicsgeofence
+  
+  UserTableReadScalingPolicy: 
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    Properties: 
+      PolicyName: ReadAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: 
+        Ref: UserTableReadCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration: 
+        TargetValue: 70
+        PredefinedMetricSpecification: 
+          PredefinedMetricType: DynamoDBReadCapacityUtilization
+
+
+
+
+# a-zA-Z0-9_.-
+
+# AWSTemplateFormatVersion: 2010-09-09
+# Description: AWS CloudFormation Template to create global tables
+
+# Parameters:
+#   ReplicationGroupList:
+#     Description: 'Comma delimited list of regions to included in the replication group (currently limited to: us-east-1,us-east-2,us-west-2,eu-west-1,eu-central-1,ap-southeast-1,ap-southeast-2,ap-northeast-1,ap-northeast-2)'
+#     Type: String
+#     Default: 'us-west-2'
+
+# Resources:
+#   globalTableExample:
+#     Type: 'AWS::DynamoDB::GlobalTable'
+#     Properties:
+#       TableName: mytable
+#       AttributeDefinitions:
+#         - AttributeName: PK
+#           AttributeType: S
+#       KeySchema:
+#         - AttributeName: PK
+#           KeyType: HASH
+#       BillingMode: PAY_PER_REQUEST
+#       StreamSpecification:
+#         StreamViewType: NEW_AND_OLD_IMAGES
+#       SSESpecification:
+#         SSEEnabled: true
+#         SSEType: "KMS"
+#       Replicas:
+#         - Region: !Join [ "", [!Ref "AWS::Region"]]
+#         - Region: !Ref ReplicationGroupList
+#       Tags:
+#       - Key: Name
+#         Value: mytable
+#       - Key: Region
+#         Value: east
+
+      
