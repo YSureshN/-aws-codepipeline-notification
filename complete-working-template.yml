@@ -48,7 +48,28 @@ Mappings:
       "PubSubnetId2": "subnet-191faa33"
       "RDSSecurityGroup": "sg-96aa31ee"
       "DBSubnetGroupName": "dev.rds.subnetgrp"
-          
+      "MSKSecurityGroups": "sg-9bad17e3"
+      "EKSClusterSecurityGroupIdsone": "sg-0254a72c37a13191f"
+      "EKSClusterSecurityGroupIdstwo": "sg-0553232152be703cf"
+      "EKSClusterSecurityGroupIdsthree": "sg-9bad17e3"
+      "NodeEc2SshKey": "devutil"
+      "NodeSecurityGroups": "sg-9bad17e3"
+      "GeofenceDispatcherSecurityGroup1": "sg-9bad17e3"
+      "CertArn": "arn:aws:acm:us-east-1:567234402044:certificate/5a14fe12-c8b1-4be3-b6fa-09b7da98c6fc"
+      "RetentionInDays": "7"
+      "ConnectionString": "Data Source=devotgdb00;user id=hercdb; password=@dminP@ss15;initial catalog=OTG3;Pooling=true;Min Pool Size=50; Max Pool Size=150;Application Name=OTGMobileAPI"
+      "telematicsConnectionString": "Data Source=devtelematicsdb.hercrentals.com;user id=hercdb;password=@dminP@ss15;initial catalog=Telematics;"
+      "ContrRecordName": "devotgmobileapi.hercrentals.com"
+      "JwtIssuer": "http://devotgmobileapi.hercrentals.com/"
+      "JwtAudience": "http://devotgmobileapi.hercrentals.com/"
+      "TaskCount": "1"
+      "redisConnectionString": "devotgcachedb.hercrentals.com:6379,abortConnect=false"
+      "PusherAppId": "728305"
+      "PusherAppKey": "8acd21bacea2038ca1f2"
+      "PusherAppSecret": "af6f153de9ddbe58bd4e"
+      "PusherCluster": "us2"
+      "ASPNETCOREENVIRONMENT": "Dev"
+      "PSTOffsetValue": "-480"    
   qa:
     Layer:
       "VpcId": "vpc-9ad5dafe"
@@ -58,7 +79,27 @@ Mappings:
       "PubSubnetId2": "subnet-2482390e"
       "RDSSecurityGroup": "sg-96aa31ee"
       "DBSubnetGroupName": "dev.rds.subnetgrp"
-      
+      "MSKSecurityGroups": "sg-9bad17e3"
+      "EKSClusterSecurityGroupIdsone": "sg-0254a72c37a13191f"
+      "EKSClusterSecurityGroupIdstwo": "sg-0553232152be703cf"
+      "EKSClusterSecurityGroupIdsthree": "sg-9bad17e3"
+      "NodeEc2SshKey": "devutil"
+      "NodeSecurityGroups": "sg-9bad17e3"
+      "GeofenceDispatcherSecurityGroup1": "sg-9bad17e3"
+      "CertArn": "arn:aws:acm:us-east-1:567234402044:certificate/5a14fe12-c8b1-4be3-b6fa-09b7da98c6fc"
+      "RetentionInDays": "7"
+      "ConnectionString": "Data Source=qaotgdb00;user id=sa;password=Herc1234$;initial catalog=OTG;"
+      "telematicsConnectionString": "Data Source=qatelematicsdb.hercrentals.com;user id=hercdb;password=@dminP@ss15;initial catalog=Telematics;"
+      "ContrRecordName": "qaotgmobileapi.hercrentals.com"
+      "JwtIssuer": "http://qaotgmobileapi.hercrentals.com/"
+      "JwtAudience": "http://qaotgmobileapi.hercrentals.com/"
+      "TaskCount": "1"
+      "redisConnectionString": "qaotgcachedb.hercrentals.com:6379,abortConnect=false"
+      "PusherAppId": "811131"
+      "PusherAppKey": "73cc552b55036b700d7e"
+      "PusherAppSecret": "6d62a96afb85e6d67637"
+      "PusherCluster": "us2"
+      "ASPNETCOREENVIRONMENT": "QA"
   stg:
     Layer:
       "VpcId": "vpc-a29785c6"
@@ -72,7 +113,54 @@ Mappings:
       "EKSClusterSecurityGroupIdsone": "sg-0254a72c37a13191f"
       "EKSClusterSecurityGroupIdstwo": "sg-0553232152be703cf"
       "EKSClusterSecurityGroupIdsthree": "sg-9bad17e3"
-      
+      "NodeEc2SshKey": "devutil"
+      "NodeSecurityGroups": "sg-9bad17e3"
+      "GeofenceDispatcherSecurityGroup1": "sg-9bad17e3"
+      "CertArn": "arn:aws:acm:us-east-1:110972972731:certificate/a7d5744c-5854-4c05-983e-1913bdd6bc9f"
+      "RetentionInDays": "14"
+      "OTGConnectionString": "Data Source=stgtelematicsdb.hercrentals.com;user id=hercdb;password=@dminP@ss15;initial catalog=Telematics;"
+      "ContrRecordName": "stgtelematicsapi.hercrentals.com"
+      "TaskCount": "2"
+      "EmailHostName": "email-smtp.us-east-1.amazonaws.com"
+      "EmailPassword": "AvwX6f4srGE8+Hq70YBt6AuIkiXsBZwQ91+FIyDgwrYG"
+      "EmailPort": "587"
+      "EmailUserID": "AKIAJVHCN7OMIS4QH53A"
+      "SendEmail": "true"
+      "ProControlApplicationAccessID": "1"
+      "EnableAuthentication": "false"
+      "JwtIssuer": "SSOMaster"
+      "JwtAudience": "HercAudience"
+      "URLUPLOAD": "http://smsapi.wire2air.com/smsadmin/submitsm.aspx"
+      "URLReply": "https://stgtelematicsapi.hercrentals.com/api/AlertsRecipients/GetSMSDetails"
+      "URLAlertReply": "https://stgtelematicsapi.hercrentals.com/api/AlertsRecipients/GetSMSDetails"
+      "SessionConnectionString": "Data Source=stgtelematicsdb.hercrentals.com;user id=sa; password=Herc1234$ ; initial catalog = Session"
+      "ActiveDirectoryServerId": "2"
+      "TokenMinutes": "10"
+      "ZeroMinutes": "0"
+      "ExpireMinutes": "30"      
+      "AppSettingsDoShowGridLinesInGoogleMap": "false"
+      "AppSettingsOuterGridExtend": "0" 
+      "AppSettingsDoUpdateAllCentroidsToNearestContainingPoint": "false"
+      "AppSettingsDoMergeGridIfCentroidsAreCloseToEachOther": "true"
+      "AppSettingsCacheServices": "true"
+      "AppSettingsMergeWithin": "2.9"
+      "AppSettingsMinClusterSize": "2"
+      "AppSettingsMaxMarkersReturned": "500"
+      "AppSettingsAlwaysClusteringEnabledWhenZoomLevelLess": "2"
+      "AppSettingsZoomlevelClusterStop": "20"
+      "AppSettingsGridX": "6"
+      "AppSettingsGridY": "5"
+      "AppSettingsMarkerTypes": "1;2;3"
+      "AppSettingsMaxPointsInCache": "100000000"
+      "AppSettingsWindowsDomain": "HERC"
+      "AppSettingsDomain": "ad.hercrentals.com"
+      "TokensKey": "db3OIsj+BXE9NZDy0t8W3TcNekrF+2d/1sFnWG4HnV8TZY30iTOdtVWJG8abWvB1GlOgJuQZdcdhjkum/hccMw=="
+      "TokensIssuer": "ad.hercrentals.com"
+      "VERSION": "2.0"
+      "USERID": "HERC"
+      "PASSWORD": "herc"
+      "VASID": "3140"
+      "FROM": "27126"
   prod:
     Layer:
       "VpcId": "vpc-e8ece28c"
@@ -82,6 +170,58 @@ Mappings:
       "PubSubnetId2": "subnet-0ece4356"
       "RDSSecurityGroup": "sg-96aa31ee"
       "DBSubnetGroupName": "dev.rds.subnetgrp"
+      "MSKSecurityGroups": "sg-9bad17e3"
+      "EKSClusterSecurityGroupIdsone": "sg-0254a72c37a13191f"
+      "EKSClusterSecurityGroupIdstwo": "sg-0553232152be703cf"
+      "EKSClusterSecurityGroupIdsthree": "sg-9bad17e3"
+      "NodeEc2SshKey": "devutil"
+      "NodeSecurityGroups": "sg-9bad17e3"
+      "GeofenceDispatcherSecurityGroup1": "sg-9bad17e3"
+      "CertArn": "arn:aws:acm:us-east-1:110972972731:certificate/a7d5744c-5854-4c05-983e-1913bdd6bc9f"
+      "RetentionInDays": "30"
+      "TelematicsConnectionString": "Data Source=prdtelematicsdb.hercrentals.com;user id=hercdb;password=@dminP@ss15;initial catalog=Telematics;"
+      "ContrRecordName": "telematicsapi.hercrentals.com"
+      "TaskCount": "2"
+      "EmailHostName": "email-smtp.us-east-1.amazonaws.com"
+      "EmailPassword": "AvwX6f4srGE8+Hq70YBt6AuIkiXsBZwQ91+FIyDgwrYG"
+      "EmailPort": "587"
+      "EmailUserID": "AKIAJVHCN7OMIS4QH53A"
+      "SendEmail": "true"
+      "ProControlApplicationAccessID": "1"
+      "EnableAuthentication": "false"
+      "JwtIssuer": "SSOMaster"
+      "JwtAudience": "HercAudience"
+      "URLUPLOAD": "http://smsapi.wire2air.com/smsadmin/submitsm.aspx"
+      "URLReply": "https://telematicsapi.hercrentals.com/api/AlertsRecipients/GetSMSDetails"
+      "URLAlertReply": "https://telematicsapi.hercrentals.com/api/AlertsRecipients/GetSMSDetails"
+      "SessionConnectionString": "Data Source=prdtelematicsdb.hercrentals.com;user id=sa; password=Herc1234$ ; initial catalog = Session"
+      "ActiveDirectoryServerId": "2"
+      "TokenMinutes": "10"
+      "ZeroMinutes": "0"
+      "ExpireMinutes": "30"      
+      "AppSettingsDoShowGridLinesInGoogleMap": "false"
+      "AppSettingsOuterGridExtend": "0" 
+      "AppSettingsDoUpdateAllCentroidsToNearestContainingPoint": "false"
+      "AppSettingsDoMergeGridIfCentroidsAreCloseToEachOther": "true"
+      "AppSettingsCacheServices": "true"
+      "AppSettingsMergeWithin": "2.9"
+      "AppSettingsMinClusterSize": "2"
+      "AppSettingsMaxMarkersReturned": "500"
+      "AppSettingsAlwaysClusteringEnabledWhenZoomLevelLess": "2"
+      "AppSettingsZoomlevelClusterStop": "20"
+      "AppSettingsGridX": "6"
+      "AppSettingsGridY": "5"
+      "AppSettingsMarkerTypes": "1;2;3"
+      "AppSettingsMaxPointsInCache": "100000000"
+      "AppSettingsWindowsDomain": "HERC"
+      "AppSettingsDomain": "ad.hercrentals.com"
+      "TokensKey": "db3OIsj+BXE9NZDy0t8W3TcNekrF+2d/1sFnWG4HnV8TZY30iTOdtVWJG8abWvB1GlOgJuQZdcdhjkum/hccMw=="
+      "TokensIssuer": "ad.hercrentals.com"
+      "VERSION": "2.0"
+      "USERID": "HERC"
+      "PASSWORD": "herc"
+      "VASID": "3140"
+      "FROM": "27126"
 #-----------------------------------------------------------------------------
 # Conditions
 #-----------------------------------------------------------------------------
@@ -691,17 +831,29 @@ Resources:
               - Effect: Allow
                 Action: 'cloudformation:*'
                 Resource: '*'
+              - Effect: "Allow"
+                Action:
+                  - "ec2:CreateNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:DetachNetworkInterface"
+                  - "ec2:DeleteNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:AssignPrivateIpAddresses"
+                  - "ec2:UnassignPrivateIpAddresses"
+                  - "ec2:AttachNetworkInterface"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
       ManagedPolicyArns: 
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
         - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
         - arn:aws:iam::aws:policy/AWSLambdaInvocation-DynamoDB
-        # - arn:aws:iam::aws:policy/AWSLambdaVPCAccessExecutionRole
-        # - arn:aws:iam::aws:policy/AWSLambdaMSKExecutionRole
       RoleName:
         'Fn::Join':
             - '-'
-            - - Ref: EnvType
+            - - Ref: Environment
               - telematics-geofenceactivatortest-Lambda-API
   
   DynamoDBMangedPolicy:
@@ -880,8 +1032,15 @@ Resources:
         - !Ref GeofenceActivaterRole
 
   GeofenceActivaterlambdavpc:
-    Type: AWS::IAM::Policy
+    Type: AWS::IAM::ManagedPolicy
     Properties: 
+      Description: Managed Policy to attach to GeofenceActivaterRole Role
+      ManagedPolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofenceactivator-lambdavpc
+      Path: /
       PolicyDocument: 
         Version: "2012-10-17"
         Statement:
@@ -896,7 +1055,6 @@ Resources:
               - 'ec2:AssignPrivateIpAddresses'
               - 'ec2:UnassignPrivateIpAddresses'
             Resource: '*'
-      PolicyName: GeofenceActivaterflambdavpc
       Roles: 
         - !Ref GeofenceActivaterRole
   
@@ -925,16 +1083,30 @@ Resources:
               - Effect: Allow
                 Action: 'cloudformation:*'
                 Resource: '*'
+              - Effect: "Allow"
+                Action:
+                  - "ec2:CreateNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:DetachNetworkInterface"
+                  - "ec2:DeleteNetworkInterface"
+                  - "ec2:DescribeNetworkInterfaces"
+                  - "ec2:AssignPrivateIpAddresses"
+                  - "ec2:UnassignPrivateIpAddresses"
+                  - "ec2:AttachNetworkInterface"
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
       ManagedPolicyArns: 
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
         - arn:aws:iam::aws:policy/AmazonRDSFullAccess
         - arn:aws:iam::aws:policy/CloudWatchFullAccess
-        #- arn:aws:iam::aws:policy/AWSLambdaVPCAccessExecutionRole
       RoleName:
         'Fn::Join':
             - '-'
-            - - Ref: EnvType
-              - telematics-geofence-Dispatcher-Lambda_RDS_FullAccess
+            - - Ref: Environment
+              - telematics-geofence-Dispatcher-Lambda-RDS-FullAccess
+  
   GeofenceDispatcherLocationServices:
     Type: AWS::IAM::ManagedPolicy
     Properties: 
@@ -1103,8 +1275,15 @@ Resources:
         - !Ref GeofenceDispatcherRole
   
   GeofenceDispatcherlambdavpc:
-    Type: AWS::IAM::Policy
+    Type: AWS::IAM::ManagedPolicy
     Properties: 
+      Description: Managed Policy to attach to GeofenceActivaterRole Role
+      ManagedPolicyName:
+        'Fn::Join':
+            - '-'
+            - - Ref: Environment
+              - telematics-geofence-Dispatcher-lambdavpc
+      Path: /
       PolicyDocument: 
         Version: "2012-10-17"
         Statement:
@@ -1119,7 +1298,6 @@ Resources:
               - 'ec2:AssignPrivateIpAddresses'
               - 'ec2:UnassignPrivateIpAddresses'
             Resource: '*'
-      PolicyName: GeofenceDispatcherlambdavpc
       Roles: 
         - !Ref GeofenceDispatcherRole
   
@@ -1363,7 +1541,6 @@ Resources:
         type AlertResponse {
           alerts: [Alerts]
         }
-
         type Alerts {
           id: Int
           customerNumber: String
@@ -1372,13 +1549,11 @@ Resources:
           alerType: String
           alertMessage: String
         }
-
         enum AutoAddEquipOfType {
           CATEGORY
           EQUIPMENT_TYPE
           CAT_CLASS
         }
-
         type Branch {
           branchnumber: String
           branchname: String
@@ -1392,12 +1567,10 @@ Resources:
           zip: String
           phone: String
         }
-
         type BulkGeofenceOutput {
           geofenceId: [String]
           errorMessage: String
         }
-
         type Contract {
           contractNumber: String
           poNumber: String
@@ -1406,14 +1579,12 @@ Resources:
           rentalBranchCode: String
           rentalBranchDetails: RentalBranchDetails
         }
-
         type DeliveryImage {
           imageUri: String
           imageName: String
           photoTakenAt: String
           latLong: String
         }
-
         type DeviceInfo {
           batteryLifeRemaining: Int
           engineRPM: Float
@@ -1431,7 +1602,6 @@ Resources:
           humidity: String
           ambientAirTemperature: String
         }
-
         type DevicePeriodicMessage {
           equipmentID: String
           accountID: String
@@ -1483,13 +1653,11 @@ Resources:
           speed: Int
           engineRPM: Float
         }
-
         type DiagnosticTroubleCode {
           code: String
           description: String
           dateOfTrigger: String
         }
-
         type Driver {
           driverId: String
           firstName: String
@@ -1498,7 +1666,6 @@ Resources:
           truckType: String
           isHauler: Boolean
         }
-
         type DriverInfo {
           driverId: String
           firstName: String
@@ -1507,7 +1674,6 @@ Resources:
           truckType: String
           isHauler: Boolean
         }
-
         type EquipInfo {
           equipmentID: String
           accountID: String
@@ -1536,7 +1702,6 @@ Resources:
           jobsiteName: String
           jobSiteID: Int
         }
-
         type EquipSummary {
           ##equipmentID: Int
           ############################errorMessage: String
@@ -1556,13 +1721,11 @@ Resources:
           equipmentImage: String
           deliveryImages: [Image]
         }
-
         type EquipmentCommerceData {
           catClass: String
           equipmentCategory: [String]
           equipmentType: String
         }
-
         type EquipmentCustomName {
           customerNumber: String
           contractNumber: String
@@ -1571,14 +1734,12 @@ Resources:
           errorMessage: String
           errorType: String
         }
-
         input EquipmentCustomNames {
           customerNumber: String!
           contractNumber: String
           icNumber: String!
           customEquipmentName: String!
         }
-
         type EquipmentDataInList {
           equipmentIC: String
           coordinates: [Float]
@@ -1588,7 +1749,6 @@ Resources:
           ignition: Boolean
           alertCount: Int
         }
-
         type EquipmentDeliveryDetails {
           branchCode: String
           rentalAgreement: String
@@ -1607,13 +1767,11 @@ Resources:
           equipmentInfo: EquipmentInfo
           servingBranch: ServingBranch
         }
-
         type EquipmentDiagnosticsAndSafety {
           alertCount: Int
           deviceInfo: DeviceInfo
           equipment: [EquipmentInfoDiagnosticsAndSafety]
         }
-
         type EquipmentInfo {
           equipmentId: String
           equipmentNumber: String
@@ -1626,7 +1784,6 @@ Resources:
           condition: String
           deliveryImages: [DeliveryImage]
         }
-
         type EquipmentInfoDiagnosticsAndSafety {
           batteryVoltage: Float
           engineCoolantTemp: String
@@ -1638,7 +1795,6 @@ Resources:
           name: String
           customName: String
         }
-
         type EquipmentName {
           rentalManCategory: String
           rentalManClass: String
@@ -1648,7 +1804,6 @@ Resources:
           errorMessage: String
           errorType: String
         }
-
         input EquipmentNames {
           rentalManCategory: String
           rentalManClass: String
@@ -1656,19 +1811,16 @@ Resources:
           description: String
           division: String
         }
-
         type EquipmentOperatorInfo {
           equipmentID: String
           contractNumber: String
           operators: [Operator]
           previousOperators: [Operator]
         }
-
         type EquipmentUtilizationTimeline {
           reportDate: AWSDateTime
           ignitionStatus: Int
         }
-
         type GeoFence {
           accountId: String
           active: Boolean
@@ -1686,7 +1838,6 @@ Resources:
           equipment: [String]
           autoAddEquipTypeValues: [String]
         }
-
         input GeoFenceInput {
           accountId: String
           active: Boolean
@@ -1701,14 +1852,12 @@ Resources:
           autoAddEquipTypeValues: [String]
           equipment: [String]
         }
-
         type Image {
           imageName: String
           imageUri: String
           latLong: String
           photoTakenAt: String
         }
-
         type JobSite {
           id: String
           jobNumber: String
@@ -1722,7 +1871,6 @@ Resources:
           jobPhone: String
           contactName: String
         }
-
         type Mutation {
           addBulkGeofence(accountId: String!, geofences: [GeoFenceInput]): BulkGeofenceOutput
           saveCustomEquipmentName(equipmentCustomNameRequestList: [EquipmentCustomNames]): [EquipmentCustomName]
@@ -1733,7 +1881,6 @@ Resources:
           addEquipmentToGeofence(geofenceId: String!, equipmentNumber: String!): String
           saveEquipmentName(equipmentCustomNameRequestList: [EquipmentNames]): [EquipmentName]
         }
-
         type OTGEquipmentDetails {
           equipmentId: String
           equipmentNumber: String
@@ -1750,12 +1897,10 @@ Resources:
           equipmentImage: String
           deliveryImages: [Image]
         }
-
         type Operator {
           name: String
           date: String
         }
-
         type OtgDTO {
           branchCode: String
           contractNumber: String
@@ -1770,13 +1915,11 @@ Resources:
           driverInfo: Driver
           servingBranch: Branch
         }
-
         type PickupDetails {
           pickupTicketNumber: String
           releasedDate: String
           releasedBy: String
         }
-
         type Query {
           getEquipmentsInGeofence(id: String!): [EquipmentDataInList]
           GetEquipmentUtilizationTimeline(
@@ -1816,7 +1959,6 @@ Resources:
           ): UtilizationDetails
           getDiagnosticTroubleCode(customerNumber: String, equipmentIc: String, division: String): [DiagnosticTroubleCode]
         }
-
         type RentalBranchDetails {
           branchname: String
           addressline1: String
@@ -1825,12 +1967,10 @@ Resources:
           zip: String
           phone: String
         }
-
         type RouteCoordinates {
           latitude: Float
           longitude: Float
         }
-
         type RouteInfo {
           contractNumber: String
           driverId: String
@@ -1838,7 +1978,6 @@ Resources:
           eta: String
           routeUpdates: [RouteCoordinates]
         }
-
         type ServingBranch {
           address: String
           addressLatitude: String
@@ -1852,31 +1991,26 @@ Resources:
           state: String
           zip: String
         }
-
         input ShapeInput {
           shapeType: ShapeType
           radius: Float
           coordinate: [[[Float]]]
         }
-
         type ShapeSchema {
           shapeType: ShapeType
           radius: Float
           coordinate: [[[Float]]]
         }
-
         enum ShapeType {
           CIRCLE
           POLYGON
           RECTANGLE
         }
-
         enum StatusType {
           REGISTERING
           READY
           ERROR
         }
-
         type UpdateStatus {
           geofenceId: String
           accountId: String
@@ -1892,7 +2026,6 @@ Resources:
           autoAddEquipTypeValues: [String]
           equipment: [String]
         }
-
         type UtilizationDetails {
           lastStart: String
           usageToday: Int
@@ -1903,7 +2036,6 @@ Resources:
           engineidleHours: Int
           mileage: Int
         }
-
         schema {
           query: Query
           mutation: Mutation
