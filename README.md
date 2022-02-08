@@ -85,3 +85,4 @@ aws cloudformation deploy \
         WebhookUrl=<YourWebhookUrl> \
         Env=<slack/msteams>
 ```
+Sharing across the AWS Documentation link documenting steps to configure the process with AWS to automate API testing: https://aws.amazon.com/blogs/devops/automating-your-api-testing-with-aws-codebuild-aws-codepipeline-and-postman/
