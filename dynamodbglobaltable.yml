@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS CloudFormation Template to create global tables
+
+Parameters:
+  
+  EnvType:
+    Description: 'Environment: dev,qa,stg,prod'
+    Type: String
+    Default: qa
+    AllowedValues:
+    - dev
+    - qa
+    - stg
+    - prod
+    ConstraintDescription: must be either 'dev','qa','stg' or 'prod'
+
+Resources:
+
+  #-----------------------------------------------------------------------------
+  # This DynamoDB Table Name is telematics.alertPreference
+  #-----------------------------------------------------------------------------
+
+  TelematicsalertPreference:
+    Type: 'AWS::DynamoDB::GlobalTable'
+    Properties:
+      TableName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - telematics.alertPreference
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: "KMS"
+      Replicas:
+        - Region: !Join [ "", [!Ref "AWS::Region"]]
+        - Region: us-west-1
+  
+  #-----------------------------------------------------------------------------
+  # This DynamoDB Table Name is Telematics.Equipmentlocations
+  #-----------------------------------------------------------------------------
+  
+  TelematicsEquipmentlocations:
+    Type: 'AWS::DynamoDB::GlobalTable'
+    Properties:
+      TableName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - Telematics.Equipmentlocations
+      AttributeDefinitions:
+        - AttributeName: EquipmentIdentifier
+          AttributeType: S
+      KeySchema:
+        - AttributeName: EquipmentIdentifier
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: "KMS"
+      Replicas:
+        - Region: !Join [ "", [!Ref "AWS::Region"]]
+        - Region: us-west-1
+
+  #-----------------------------------------------------------------------------
+  # This DynamoDB Table Name is Telematics.Geofence
+  #-----------------------------------------------------------------------------
+  
+  Telematicsgeofence:
+    Type: 'AWS::DynamoDB::GlobalTable'
+    Properties:
+      TableName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - Telematics.Geofence
+      AttributeDefinitions:
+        - AttributeName: geofenceId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: geofenceId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: "KMS"
+      Replicas:
+        - Region: !Join [ "", [!Ref "AWS::Region"]]
+        - Region: us-west-1
+
+  #-----------------------------------------------------------------------------
+  # This DynamoDB Table Name is Elevate.Telematics.OTG
+  #-----------------------------------------------------------------------------
+  
+  ElevateTelematicsOTG:
+    Type: 'AWS::DynamoDB::GlobalTable'
+    Properties:
+      TableName:
+        'Fn::Join':
+            - '-'
+            - - Ref: EnvType
+              - Elevate.Telematics.OTG
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: TimeStamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+        - AttributeName: TimeStamp
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: "KMS"
+      Replicas:
+        - Region: !Join [ "", [!Ref "AWS::Region"]]
+        - Region: us-west-1
